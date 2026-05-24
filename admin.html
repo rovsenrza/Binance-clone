@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1200">
+  <meta name="color-scheme" content="light only">
+  <title>Admin Panel — Binance Futures</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23FCD535' rx='12' width='100' height='100'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%231E2329' font-weight='bold'>B</text></svg>">
+</head>
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header class="header">
+    <a href="index.html" class="header__home-icon" title="Home">
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwAgMAAAAqbBEUAAAACVBMVEUAAAAeIikeIyk2J3eMAAAAAnRSTlMAf7YpoZUAAABTSURBVCjPzcsxEcAgFATRnyYiIiEq0IMaRFDAqeQKmLuWhmG7LV4c7Uk2b7H5qk3uRoAkAhQRoIoA3QiRCJEIkQiRESIRIhGiRYQw25sW8d85RxrSjGl5iJbe6gAAAABJRU5ErkJggg==" alt="home" width="24" height="24">
+    </a>
+    <a href="index.html" class="header__logo">
+      <img src="data:image/png;base64,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" alt="Binance Futures" height="20">
+    </a>
+    <nav class="header__nav">
+      <span class="header__nav-item" style="color:#FCD535;font-weight:600">Admin Panel</span>
+    </nav>
+    <div class="header__icons">
+      <a href="index.html" class="header__icon" title="Back to Trading" style="font-size:13px;color:#474D57;width:auto;gap:4px;display:flex;align-items:center;text-decoration:none">← Trading</a>
+    </div>
+  </header>
+
+  <!-- ===== LAYOUT ===== -->
+  <div class="admin-layout">
+
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+      <div class="admin-sidebar__title">Admin Panel</div>
+      <ul class="admin-sidebar__nav">
+        <li class="admin-sidebar__nav-item admin-sidebar__nav-item--active" data-section="coins">
+          🪙 Coin Management
+        </li>
+        <li class="admin-sidebar__nav-item" data-section="settings">
+          ⚙ Platform Settings
+        </li>
+        <li class="admin-sidebar__nav-item" data-section="danger">
+          🗑 Reset Data
+        </li>
+      </ul>
+      <a href="index.html" class="admin-sidebar__back">← Back to Trading</a>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-content">
+
+      <!-- === COINS SECTION === -->
+      <section class="admin-section" id="section-coins">
+        <div class="admin-section__header">
+          <h2 class="admin-section__title">Coin Management</h2>
+        </div>
+
+        <div id="coin-alert" class="admin-alert" hidden></div>
+
+        <!-- Add/Edit form -->
+        <form id="coin-form" class="admin-form">
+          <div class="admin-form__group">
+            <label class="admin-form__label" for="coin-symbol">Symbol *</label>
+            <input class="admin-form__input" id="coin-symbol" type="text" placeholder="e.g., BTCUSDT" required>
+          </div>
+          <div class="admin-form__group">
+            <label class="admin-form__label" for="coin-base">Base Asset *</label>
+            <input class="admin-form__input" id="coin-base" type="text" placeholder="e.g., BTC" required>
+          </div>
+          <div class="admin-form__group">
+            <label class="admin-form__label" for="coin-quote">Quote Asset</label>
+            <input class="admin-form__input" id="coin-quote" type="text" placeholder="USDT" value="USDT">
+          </div>
+          <div class="admin-form__group">
+            <label class="admin-form__label" for="coin-display">Display Name</label>
+            <input class="admin-form__input" id="coin-display" type="text" placeholder="e.g., Bitcoin">
+          </div>
+          <div class="admin-form__group">
+            <label class="admin-form__label" for="coin-api">API Symbol</label>
+            <input class="admin-form__input" id="coin-api" type="text" placeholder="Same as Symbol">
+            <span class="admin-form__hint">Leave blank to use Symbol</span>
+          </div>
+          <div class="admin-form__actions">
+            <button type="submit" id="coin-submit" class="admin-btn admin-btn--primary">Add Coin</button>
+            <button type="button" id="coin-cancel" class="admin-btn admin-btn--secondary">Cancel</button>
+          </div>
+        </form>
+
+        <!-- Coins table -->
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Base Asset</th>
+              <th>Quote Asset</th>
+              <th>Display Name</th>
+              <th>API Symbol</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="coins-tbody"></tbody>
+        </table>
+      </section>
+
+      <!-- === SETTINGS SECTION === -->
+      <section class="admin-section" id="section-settings" hidden>
+        <div class="admin-section__header">
+          <h2 class="admin-section__title">Platform Settings</h2>
+        </div>
+
+        <div id="settings-alert" class="admin-alert" hidden></div>
+
+        <form id="settings-form" class="admin-form admin-form--single">
+          <div class="admin-form__group">
+            <label class="admin-form__label" for="setting-balance">Initial Balance (USDT)</label>
+            <input class="admin-form__input" id="setting-balance" type="number" step="0.01" min="1" required>
+            <span class="admin-form__hint">Starting balance for the trading simulation</span>
+          </div>
+          <div class="admin-form__group">
+            <label class="admin-form__label" for="setting-fee">Fee Rate (%)</label>
+            <input class="admin-form__input" id="setting-fee" type="number" step="0.01" min="0" max="100" required>
+            <span class="admin-form__hint">Default: 0.04% (Binance taker fee)</span>
+          </div>
+          <div class="admin-form__group">
+            <label class="admin-form__label" for="setting-leverage">Default Leverage</label>
+            <input class="admin-form__input" id="setting-leverage" type="number" step="1" min="1" max="125" required>
+            <span class="admin-form__hint">Default: 10x</span>
+          </div>
+          <div class="admin-form__group">
+            <label class="admin-form__label" for="setting-mmr">Maintenance Margin Rate (%)</label>
+            <input class="admin-form__input" id="setting-mmr" type="number" step="0.01" min="0" max="50" required>
+            <span class="admin-form__hint">Default: 0.50%. Used for liquidation price calculation</span>
+          </div>
+          <div class="admin-form__actions">
+            <button type="submit" class="admin-btn admin-btn--primary">Save Settings</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- === DANGER ZONE === -->
+      <section class="admin-section admin-danger-zone" id="section-danger" hidden>
+        <div class="admin-section__header">
+          <h2 class="admin-section__title">⚠ Danger Zone</h2>
+        </div>
+
+        <div id="reset-alert" class="admin-alert" hidden></div>
+
+        <div style="margin-bottom: 24px">
+          <p class="admin-danger-zone__desc">
+            <strong>Reset Trading Data</strong><br>
+            Deletes all open positions, closed position history, and resets the balance to Initial Balance.
+            Coin configurations and platform settings are preserved.
+          </p>
+          <button id="btn-reset-data" class="admin-btn admin-btn--danger">Reset Trading Data</button>
+        </div>
+
+        <div>
+          <p class="admin-danger-zone__desc">
+            <strong>Reset Everything</strong><br>
+            Deletes ALL data including coins, settings, positions, and history.
+            Restores default coins (BTCUSDT, BNBUSDT) and default settings.
+          </p>
+          <button id="btn-reset-all" class="admin-btn admin-btn--danger">Reset Everything</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="js/admin.js"></script>
+</body>
+</html>

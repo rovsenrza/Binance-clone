@@ -203,7 +203,7 @@ function bindEvents() {
     btn.addEventListener('click', () => {
       historyPeriod = btn.dataset.period;
       document.querySelectorAll('[data-period]').forEach(b => {
-        b.classList.toggle('history-filters__period--active', b.dataset.period === historyPeriod);
+        b.classList.toggle('history-panel__period--active', b.dataset.period === historyPeriod);
       });
       renderHistory();
     });

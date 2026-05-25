@@ -200,8 +200,9 @@ export function renderCalcFields(size, markPrice, settings, direction) {
 // --- Positions Table ---
 
 export function renderPositionsTable(positions, prices, settings) {
-  const tbody = el('positions-tbody');
+  const container = el('positions-tbody');
   const emptyEl = el('positions-empty');
+  const headerEl = document.querySelector('.positions-header');
   const countEl = el('tab-positions-count');
   const ordersEl = el('tab-orders-count');
 
@@ -214,45 +215,66 @@ export function renderPositionsTable(positions, prices, settings) {
   });
   if (ordersEl) ordersEl.textContent = `(${ordersCount})`;
 
-  if (!tbody) return;
+  if (!container) return;
 
   if (positions.length === 0) {
-    tbody.innerHTML = '';
+    container.innerHTML = '';
     if (emptyEl) emptyEl.style.display = 'flex';
+    if (headerEl) headerEl.style.display = 'flex';
     return;
   }
 
   if (emptyEl) emptyEl.style.display = 'none';
+  if (headerEl) headerEl.style.display = 'flex';
+
+  const feeRate = settings.feeRate ?? 0.0004;
 
   const rows = positions.map(pos => {
     const markPrice = prices[pos.symbol]?.markPrice || pos.entryPrice;
-    const metrics = calcPosMetrics(pos, markPrice, settings);
+    const fundingRate = prices[pos.symbol]?.fundingRate ?? pos.fundingRate ?? 0;
+    const metrics = calcPosMetrics(pos, markPrice, settings, fundingRate, feeRate);
     const coin = storage.getCoinBySymbol(pos.symbol);
+    const baseAsset = coin?.baseAsset || pos.symbol.replace('USDT', '');
     const pricePrecision = coin?.pricePrecision ?? 2;
     const sizeColor = pos.direction === 'Long' ? 'text-long' : 'text-short';
+    const dirClass = pos.direction === 'Long' ? 'text-long' : 'text-short';
     const pnlColor = pnlClass(metrics.pnl);
     const safeId = escapeHtml(pos.id);
     const safeSymbol = escapeHtml(pos.symbol);
+    const safeMode = escapeHtml(pos.marginMode || 'Cross');
+    const safeDir = escapeHtml(pos.direction);
 
     const markPriceFormatted = formulas.formatPrice(markPrice, pricePrecision);
-    const qtyFormatted = formulas.formatQuantity ? formulas.formatQuantity(pos.quantity, coin?.qtyPrecision ?? 3) : pos.quantity;
+    const qtyFormatted = formulas.formatQuantity(pos.quantity, coin?.qtyPrecision ?? 3);
+    const iconHtml = coinIconHtml(baseAsset, 16);
 
-    return `<tr data-position-id="${safeId}">
-      <td><span class="positions-table__size ${sizeColor}">${formulas.formatPrice(pos.sizeUsdt, 2)} USDT</span></td>
-      <td>${formulas.formatPrice(pos.entryPrice, pricePrecision)}</td>
-      <td>${markPriceFormatted}</td>
-      <td>
+    return `<div class="positions-row" data-position-id="${safeId}">
+      <div class="positions-row__col positions-row__col--symbol">
+        <div class="positions-row__symbol">
+          ${iconHtml}
+          <div class="positions-row__symbol-info">
+            <span class="positions-row__symbol-name">${safeSymbol}</span>
+            <span class="positions-row__symbol-meta">Perp · ${safeMode} · <span class="${dirClass}">${safeDir} ${escapeHtml(String(pos.leverage))}x</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="positions-row__col positions-row__col--size"><span class="positions-table__size ${sizeColor}">${formulas.formatPrice(pos.sizeUsdt, 2)} USDT</span></div>
+      <div class="positions-row__col positions-row__col--entry">${formulas.formatPrice(pos.entryPrice, pricePrecision)}</div>
+      <div class="positions-row__col positions-row__col--breakeven">${formulas.formatPrice(metrics.breakEven, pricePrecision)}</div>
+      <div class="positions-row__col positions-row__col--mark">${markPriceFormatted}</div>
+      <div class="positions-row__col positions-row__col--liq">${formulas.formatPrice(metrics.liqPrice, 2)}</div>
+      <div class="positions-row__col positions-row__col--ratio"><span class="text-long">${metrics.marginRatio}</span></div>
+      <div class="positions-row__col positions-row__col--margin">${formulas.formatPrice(metrics.margin, 4)} USDT</div>
+      <div class="positions-row__col positions-row__col--pnl">
         <div class="positions-table__pnl">
           <span class="positions-table__pnl-value ${pnlColor}">${formulas.formatPnl(metrics.pnl, 2)} USDT</span>
           <span class="positions-table__pnl-roi ${pnlColor}">${formulas.formatPercent(metrics.roi, 2)}</span>
         </div>
         <span class="positions-table__share">⤴</span>
-      </td>
-      <td>${formulas.formatPrice(metrics.liqPrice, 2)}</td>
-      <td class="positions-table__tpsl">${pos.tp ? formulas.formatPrice(pos.tp, pricePrecision) : '--'} /\n${pos.sl ? formulas.formatPrice(pos.sl, pricePrecision) : '--'}</td>
-      <td>
+      </div>
+      <div class="positions-row__col positions-row__col--funding">${formulas.formatPnl(metrics.estFunding, 4)} USDT</div>
+      <div class="positions-row__col positions-row__col--close">
         <div class="positions-table__action">
-          <span class="positions-table__action-edit" title="Edit">📋</span>
           <span class="positions-table__action-btn positions-table__action-btn--market"
                 data-close-id="${safeId}"
                 title="Close at market price"
@@ -261,20 +283,41 @@ export function renderPositionsTable(positions, prices, settings) {
           <input class="positions-table__action-input" type="text" value="${markPriceFormatted}" readonly>
           <input class="positions-table__action-input" type="text" value="${qtyFormatted}" readonly>
         </div>
-      </td>
-    </tr>`;
+      </div>
+      <div class="positions-row__col positions-row__col--reverse">--</div>
+      <div class="positions-row__col positions-row__col--tpsl positions-table__tpsl">${pos.tp ? formulas.formatPrice(pos.tp, pricePrecision) : '--'} / ${pos.sl ? formulas.formatPrice(pos.sl, pricePrecision) : '--'}</div>
+      <div class="positions-row__col positions-row__col--tpsl-split">--</div>
+    </div>`;
   });
 
-  tbody.innerHTML = rows.join('');
+  container.innerHTML = rows.join('');
 }
 
-function calcPosMetrics(pos, markPrice, settings) {
+function calcPosMetrics(pos, markPrice, settings, fundingRate = 0, feeRate = 0.0004) {
   const posVal = formulas.positionValue(pos.quantity, pos.entryPrice);
   const marginVal = formulas.margin(posVal, pos.leverage);
   const pnlVal = formulas.pnl(pos.direction, pos.entryPrice, markPrice, pos.quantity);
   const roiVal = formulas.roi(pnlVal, marginVal);
   const liqVal = formulas.liqPrice(pos.direction, pos.entryPrice, pos.leverage, settings.mmr);
-  return { positionValue: posVal, margin: marginVal, pnl: pnlVal, roi: roiVal, liqPrice: liqVal };
+  const openFee = formulas.openFee(posVal, feeRate);
+  const breakEven = pos.direction === 'Long'
+    ? pos.entryPrice + openFee / pos.quantity
+    : pos.entryPrice - openFee / pos.quantity;
+  const maintMargin = posVal * (settings.mmr ?? 0.005);
+  const marginRatio = marginVal > 0
+    ? `${((maintMargin / marginVal) * 100).toFixed(2)}%`
+    : '--';
+  const estFunding = formulas.funding(posVal, fundingRate);
+  return {
+    positionValue: posVal,
+    margin: marginVal,
+    pnl: pnlVal,
+    roi: roiVal,
+    liqPrice: liqVal,
+    breakEven,
+    marginRatio,
+    estFunding,
+  };
 }
 
 // --- History Table ---
@@ -288,10 +331,14 @@ export function renderHistoryTable(historyItems) {
   if (historyItems.length === 0) {
     tbody.innerHTML = '';
     if (emptyEl) emptyEl.style.display = 'flex';
+    const table = tbody.closest('.history-table');
+    if (table) table.style.display = 'none';
     return;
   }
 
   if (emptyEl) emptyEl.style.display = 'none';
+  const table = tbody.closest('.history-table');
+  if (table) table.style.display = '';
 
   const rows = historyItems.map(h => {
     const coin = storage.getCoinBySymbol(h.symbol);
@@ -383,10 +430,10 @@ export function renderCoinDropdown(coins, currentSymbol) {
 
   dropdown.innerHTML = coins.map(coin => {
     const safeSym = escapeHtml(coin.symbol);
-    const safeBase = escapeHtml(coin.baseAsset);
+    const baseAsset = coin.baseAsset || coin.symbol.replace('USDT', '');
     const active = coin.symbol === currentSymbol ? 'pair-dropdown__item--active' : '';
     return `<div class="pair-dropdown__item ${active}" data-symbol="${safeSym}">
-      <span class="pair-dropdown__item-icon">${safeBase[0]}</span>
+      <span class="pair-dropdown__item-icon">${coinIconHtml(baseAsset, 20)}</span>
       <span>${safeSym} <span style="color:var(--color-text-tertiary)">Perp</span></span>
     </div>`;
   }).join('');
@@ -517,14 +564,18 @@ export function hideShareModal() {
 export function setActiveTab(tabName) {
   const positionsView = el('positions-view');
   const historyView = el('history-view');
+  const positionsToolbar = el('positions-toolbar');
+  const historyToolbar = el('history-toolbar');
   const tabs = qsa('[data-tab]');
 
   tabs.forEach(tab => {
     const isActive = tab.dataset.tab === tabName;
-    tab.classList.toggle('tab-bar__tab--active', isActive);
+    tab.classList.toggle('user-panel__tab--active', isActive);
     tab.setAttribute('aria-selected', String(isActive));
   });
 
   if (positionsView) positionsView.style.display = tabName === 'positions' ? '' : 'none';
   if (historyView) historyView.style.display = tabName === 'history' ? '' : 'none';
+  if (positionsToolbar) positionsToolbar.style.display = tabName === 'positions' ? '' : 'none';
+  if (historyToolbar) historyToolbar.style.display = tabName === 'history' ? '' : 'none';
 }

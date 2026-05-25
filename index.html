@@ -76,10 +76,16 @@
     <aside class="order-panel">
       <!-- Margin / Leverage row -->
       <div class="order-panel__margin-row">
-        <span class="order-panel__margin-badge order-panel__margin-badge--active">Cross</span>
-        <span class="order-panel__margin-badge order-panel__margin-badge--active">10x</span>
-        <span class="order-panel__margin-badge">S</span>
-        <span class="order-panel__margin-badge">⋯</span>
+        <div class="order-panel__margin-badges">
+          <span class="order-panel__margin-badge order-panel__margin-badge--active">Cross</span>
+          <span class="order-panel__margin-badge order-panel__margin-badge--active">10x</span>
+          <span class="order-panel__margin-badge">S</span>
+        </div>
+        <span class="order-panel__margin-menu" aria-hidden="true">
+          <svg class="order-panel__icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4.9 10a1.5 1.5 0 011.5 1.5v1A1.5 1.5 0 014.9 14h-1a1.5 1.5 0 01-1.5-1.5v-1A1.5 1.5 0 013.9 10h1zm7.6 0a1.5 1.5 0 011.5 1.5v1a1.5 1.5 0 01-1.5 1.5h-1a1.5 1.5 0 01-1.5-1.5v-1a1.5 1.5 0 011.5-1.5h1zm7.6 0a1.5 1.5 0 011.5 1.5v1a1.5 1.5 0 01-1.5 1.5h-1a1.5 1.5 0 01-1.5-1.5v-1a1.5 1.5 0 011.5-1.5h1z" fill="currentColor"></path>
+          </svg>
+        </span>
       </div>
 
       <!-- Order type tabs -->
@@ -87,13 +93,31 @@
         <span class="order-panel__type-tab">Limit</span>
         <span class="order-panel__type-tab order-panel__type-tab--active">Market</span>
         <span class="order-panel__type-tab">Conditi… <span class="order-panel__input-suffix-arrow">▾</span></span>
-        <span class="order-panel__type-tab" style="color:var(--color-text-tertiary);font-size:16px">⋯</span>
+        <span class="order-panel__type-info" title="Info" aria-hidden="true">
+          <svg class="order-panel__icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 1.6c5.744 0 10.4 4.656 10.4 10.4 0 5.744-4.656 10.4-10.4 10.4-5.744 0-10.4-4.656-10.4-10.4C1.6 6.256 6.256 1.6 12 1.6zm0 1.8A8.6 8.6 0 003.4 12a8.6 8.6 0 008.6 8.6 8.6 8.6 0 008.6-8.6A8.6 8.6 0 0012 3.4zm0 6.3a.9.9 0 01.9.9v6a.9.9 0 01-1.8 0v-6a.9.9 0 01.9-.9zm0-3.1a1 1 0 110 2 1 1 0 010-2z" fill="currentColor"></path>
+          </svg>
+        </span>
       </div>
 
       <!-- Available balance -->
       <div class="order-panel__avbl">
-        <span>Avbl <span id="order-avbl">0.00 USDT</span> <span class="order-panel__avbl-icon">⇄</span></span>
-        <span class="order-panel__avbl-icon" title="Info">ⓘ</span>
+        <span class="order-panel__avbl-left">
+          Avbl <span id="order-avbl">0.00 USDT</span>
+          <span class="order-panel__avbl-icon order-panel__avbl-icon--transfer" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11.5 5.5L13.5 8L11.5 10.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M13.5 8H2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+              <path d="M4.5 10.5L2.5 8L4.5 5.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2.5 8H13.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+          </span>
+        </span>
+        <span class="order-panel__avbl-icon order-panel__avbl-icon--calc" title="Calculator" aria-hidden="true">
+          <svg class="order-panel__icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20.006 16.08l.091.006a.9.9 0 010 1.79l-.091.005h-5.004a.9.9 0 010-1.8h5.004zM20.006 19.08l.091.005a.9.9 0 010 1.791l-.091.005h-5.004a.9.9 0 010-1.8h5.004zM5.598 8.996V7.398H3.999a.9.9 0 010-1.8h1.599V4a.9.9 0 111.8 0v1.599h1.597l.093.004a.9.9 0 010 1.79l-.093.005H7.398v1.598a.9.9 0 01-1.8 0zM19.318 3.408l.069-.061a.9.9 0 011.266 1.266l-.061.069-15.91 15.91a.9.9 0 01-1.274-1.274l15.91-15.91z" fill="currentColor"></path>
+          </svg>
+        </span>
       </div>
 
       <!-- Size input -->
@@ -109,7 +133,7 @@
       <div class="order-panel__slider">
         <div class="order-panel__slider-track">
           <div class="order-panel__slider-dots">
-            <span class="order-panel__slider-dot"></span>
+            <span class="order-panel__slider-dot order-panel__slider-dot--active"></span>
             <span class="order-panel__slider-dot"></span>
             <span class="order-panel__slider-dot"></span>
             <span class="order-panel__slider-dot"></span>
@@ -260,86 +284,121 @@
         </div>
       </div>
 
-      <!-- Tab bar -->
-      <div class="tab-bar">
-        <div class="tab-bar__tabs" role="tablist">
-          <button class="tab-bar__tab tab-bar__tab--active" data-tab="positions" role="tab" aria-selected="true">Positions<span id="tab-positions-count">(0)</span></button>
-          <button class="tab-bar__tab tab-bar__tab--disabled" role="tab" disabled>Open Orders<span id="tab-orders-count">(0)</span></button>
-          <button class="tab-bar__tab tab-bar__tab--disabled" role="tab" disabled>Order History</button>
-          <button class="tab-bar__tab tab-bar__tab--disabled" role="tab" disabled>Trade History</button>
-          <button class="tab-bar__tab tab-bar__tab--disabled" role="tab" disabled>Transaction History</button>
-          <button class="tab-bar__tab" data-tab="history" role="tab" aria-selected="false">Position History</button>
-          <button class="tab-bar__tab tab-bar__tab--disabled" role="tab" disabled>Bots</button>
-          <button class="tab-bar__tab tab-bar__tab--disabled" role="tab" disabled>Assets</button>
-          <span class="tab-bar__tab tab-bar__tab--scroll" style="margin-left:4px;cursor:pointer;font-size:16px">‹</span>
-          <span class="tab-bar__tab tab-bar__tab--scroll" style="cursor:pointer;font-size:16px">›</span>
+      <!-- User info panel (positions / history) -->
+      <div class="user-panel">
+        <div class="user-panel__head">
+          <div class="user-panel__tabs" role="tablist">
+            <button class="user-panel__tab user-panel__tab--active" data-tab="positions" role="tab" aria-selected="true">Positions<span id="tab-positions-count">(0)</span></button>
+            <button class="user-panel__tab user-panel__tab--disabled" role="tab" disabled>Open Orders<span id="tab-orders-count">(0)</span></button>
+            <button class="user-panel__tab user-panel__tab--disabled" role="tab" disabled>Order History</button>
+            <button class="user-panel__tab user-panel__tab--disabled" role="tab" disabled>Trade History</button>
+            <button class="user-panel__tab user-panel__tab--disabled" role="tab" disabled>Transaction History</button>
+            <button class="user-panel__tab" data-tab="history" role="tab" aria-selected="false">Position History</button>
+            <button class="user-panel__tab user-panel__tab--disabled" role="tab" disabled>Bots</button>
+            <button class="user-panel__tab user-panel__tab--disabled" role="tab" disabled>Assets</button>
+          </div>
+          <div id="positions-toolbar" class="positions-toolbar">
+            <label class="positions-toolbar__checkbox">
+              <input type="checkbox" disabled>
+              <span class="positions-toolbar__checkbox-box"></span>
+              Hide Other Symbols
+            </label>
+            <span class="positions-toolbar__menu" aria-hidden="true">
+              <svg class="order-panel__icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4.9 10a1.5 1.5 0 011.5 1.5v1A1.5 1.5 0 014.9 14h-1a1.5 1.5 0 01-1.5-1.5v-1A1.5 1.5 0 013.9 10h1zm7.6 0a1.5 1.5 0 011.5 1.5v1a1.5 1.5 0 01-1.5 1.5h-1a1.5 1.5 0 01-1.5-1.5v-1a1.5 1.5 0 011.5-1.5h1zm7.6 0a1.5 1.5 0 011.5 1.5v1a1.5 1.5 0 01-1.5 1.5h-1a1.5 1.5 0 01-1.5-1.5v-1a1.5 1.5 0 011.5-1.5h1z" fill="currentColor"></path>
+              </svg>
+            </span>
+          </div>
+          <div id="history-toolbar" class="positions-toolbar positions-toolbar--history" style="display:none">
+            <label class="positions-toolbar__checkbox">
+              <input type="checkbox" disabled>
+              <span class="positions-toolbar__checkbox-box"></span>
+              Hide Other Symbols
+            </label>
+          </div>
         </div>
-        <div class="tab-bar__right">
-          <label><input type="checkbox" disabled> Hide Other Symbols</label>
-          <span style="cursor:pointer;font-size:14px;color:#707A8A">⋯</span>
+
+        <!-- Positions View -->
+        <div id="positions-view" class="user-panel__pane">
+          <div class="positions-scroll">
+            <div class="positions-header">
+              <div class="positions-header__col positions-header__col--symbol">Symbol</div>
+              <div class="positions-header__col positions-header__col--size">Size</div>
+              <div class="positions-header__col positions-header__col--entry">Entry Price</div>
+              <div class="positions-header__col positions-header__col--breakeven">Break Even Price</div>
+              <div class="positions-header__col positions-header__col--mark">Mark Price</div>
+              <div class="positions-header__col positions-header__col--liq">Liq.Price</div>
+              <div class="positions-header__col positions-header__col--ratio">Margin Ratio</div>
+              <div class="positions-header__col positions-header__col--margin">Margin</div>
+              <div class="positions-header__col positions-header__col--pnl">PNL(ROI %)</div>
+              <div class="positions-header__col positions-header__col--funding">Est. Funding Fee</div>
+              <div class="positions-header__col positions-header__col--close">
+                <span>MKT Close All</span>
+                <span class="positions-header__sep"></span>
+                <span>PnL-Based Close All</span>
+              </div>
+              <div class="positions-header__col positions-header__col--reverse">Reverse</div>
+              <div class="positions-header__col positions-header__col--tpsl">TP/SL for position</div>
+              <div class="positions-header__col positions-header__col--tpsl-split">TP/SL</div>
+            </div>
+            <div id="positions-tbody" class="positions-rows"></div>
+            <div id="positions-empty" class="positions-empty">
+              <svg class="positions-empty__svg" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
+                <path d="M63.994 64a1 1 0 010 2h-32a1 1 0 010-2h32zM29.994 49.75a1.75 1.75 0 110 3.5 1.75 1.75 0 010-3.5zM29.994 34.25a1.5 1.5 0 011.5 1.5v10a1.5 1.5 0 01-3 0v-10a1.5 1.5 0 011.5-1.5z" fill="currentColor"></path>
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M72.2 8.005A4 4 0 0175.994 12v4h4l.206.005A4 4 0 0183.994 20v64l-.005.206a4.001 4.001 0 01-3.789 3.79l-.206.004h-48a4 4 0 01-3.995-3.794L27.994 84v-4h-4a4 4 0 01-3.995-3.794L19.994 76V58.968a18.086 18.086 0 01-2.002-1.554L5.707 69.7a1 1 0 01-1.414-1.414L16.578 56a17.932 17.932 0 01-4.584-12c0-6.264 3.2-11.78 8.055-15.005l-.055.036V12a4 4 0 014-4h48l.206.005zM21.994 27.87a17.927 17.927 0 019.543-1.805l-.043-.003V23h33v24h-16.75l.007-.047a17.868 17.868 0 01-1.632 5.052c0-.002.002-.003.003-.005h17.872a1 1 0 010 2H44.962a18.096 18.096 0 01-3.656 4h22.688a1 1 0 010 2H38.247a17.922 17.922 0 01-8.253 2c-2.883 0-5.607-.679-8.023-1.884l.023.012V76a2 2 0 002 2h48a2 2 0 002-2V12a2 2 0 00-2-2h-48a2 2 0 00-2 2v15.871zm8 .129c-8.837 0-16 7.163-16 16s7.163 16 16 16c8.836 0 16-7.163 16-16s-7.164-16-16-16zm3.5-1.66c-.046-.01-.093-.017-.14-.026C41.69 27.89 47.994 35.209 47.994 44c0 .336-.01.669-.028 1h14.528V25h-29v1.34zM29.994 84a2 2 0 002 2h48a2 2 0 002-2V20a2 2 0 00-2-2h-4v58l-.005.206a4.002 4.002 0 01-3.789 3.79l-.206.004h-42v4z" fill="currentColor"></path>
+              </svg>
+              <span class="positions-empty__text">You have no position.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- History View -->
+        <div id="history-view" class="user-panel__pane" style="display:none">
+          <div class="history-panel">
+            <div class="history-panel__note">
+              <span class="history-panel__note-star">*</span>
+              <span class="history-panel__note-text">Data may be displayed with a delay of 1~2 minutes, please click Refresh to update the data.</span>
+              <button type="button" class="history-panel__refresh" disabled>Refresh</button>
+            </div>
+            <div class="history-panel__filters">
+              <div class="history-panel__period-tabs" role="tablist">
+                <button type="button" class="history-panel__period history-panel__period--active" data-period="1d" role="tab">1 Day</button>
+                <button type="button" class="history-panel__period" data-period="1w" role="tab">1 Week</button>
+                <button type="button" class="history-panel__period" data-period="1m" role="tab">1 Month</button>
+                <button type="button" class="history-panel__period" data-period="3m" role="tab">3 Months</button>
+              </div>
+              <span class="history-panel__divider"></span>
+              <span class="history-panel__time-label">Time</span>
+              <div class="history-panel__date-range">
+                <input class="history-panel__date-input" type="text" id="history-date-from" readonly placeholder="YYYY-MM-DD" disabled>
+                <svg class="history-panel__date-arrow" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 12.9h13.826l-4.463 4.463a.9.9 0 001.274 1.274l6-6 .061-.069a.9.9 0 00-.061-1.205l-6-6-.069-.061a.9.9 0 00-1.266 1.266l.061.069 4.463 4.463H4a.9.9 0 000 1.8z" fill="currentColor"></path></svg>
+                <input class="history-panel__date-input" type="text" id="history-date-to" readonly placeholder="YYYY-MM-DD" disabled>
+                <svg class="history-panel__date-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20.747 17.037a3.7 3.7 0 10-3.7 3.7v1.8a5.5 5.5 0 110-11 5.5 5.5 0 010 11v-1.8a3.7 3.7 0 003.7-3.7z" fill="currentColor"></path><path d="M15.86 15.141a.9.9 0 011.8 0v1.434l.734.727a.9.9 0 01-1.267 1.279l-.852-.845a1.4 1.4 0 01-.415-.994v-1.6z" fill="currentColor"></path><path d="M22.4 10a.9.9 0 01-1.8 0V5.9H3.4v14.7h6.673l.092.005a.9.9 0 010 1.79l-.092.005H3A1.4 1.4 0 011.6 21V5.5A1.4 1.4 0 013 4.1h18a1.4 1.4 0 011.4 1.4V10z" fill="currentColor"></path><path d="M21.5 8.1l.092.004a.9.9 0 010 1.792L21.5 9.9H3a.9.9 0 010-1.8h18.5zM6.1 2.5a.9.9 0 011.8 0V5H6.1V2.5zM16.1 2.5a.9.9 0 011.8 0V5h-1.8V2.5z" fill="currentColor"></path></svg>
+              </div>
+              <button type="button" class="history-panel__select" disabled><span>Mode</span><svg class="history-panel__chevron" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.37 8.75H7.63a.75.75 0 00-.569 1.238l4.37 5.098c.299.349.84.349 1.138 0l4.37-5.098a.75.75 0 00-.57-1.238z" fill="currentColor"></path></svg></button>
+              <button type="button" class="history-panel__select" disabled><span>Symbol</span><svg class="history-panel__chevron" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.37 8.75H7.63a.75.75 0 00-.569 1.238l4.37 5.098c.299.349.84.349 1.138 0l4.37-5.098a.75.75 0 00-.57-1.238z" fill="currentColor"></path></svg></button>
+              <button type="button" class="history-panel__select history-panel__select--status" disabled><span>Status</span><svg class="history-panel__chevron" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.37 8.75H7.63a.75.75 0 00-.569 1.238l4.37 5.098c.299.349.84.349 1.138 0l4.37-5.098a.75.75 0 00-.57-1.238z" fill="currentColor"></path></svg></button>
+              <div class="history-panel__actions">
+                <button type="button" class="history-panel__btn history-panel__btn--search" disabled>Search</button>
+                <button type="button" class="history-panel__btn history-panel__btn--reset" disabled>Reset</button>
+              </div>
+            </div>
+            <div class="history-panel__content">
+              <table class="history-table" style="display:none">
+                <tbody id="history-tbody"></tbody>
+              </table>
+              <div id="history-empty" class="positions-empty">
+                <svg class="positions-empty__svg" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M63.994 64a1 1 0 010 2h-32a1 1 0 010-2h32zM29.994 49.75a1.75 1.75 0 110 3.5 1.75 1.75 0 010-3.5zM29.994 34.25a1.5 1.5 0 011.5 1.5v10a1.5 1.5 0 01-3 0v-10a1.5 1.5 0 011.5-1.5z" fill="currentColor"></path>
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M72.2 8.005A4 4 0 0175.994 12v4h4l.206.005A4 4 0 0183.994 20v64l-.005.206a4.001 4.001 0 01-3.789 3.79l-.206.004h-48a4 4 0 01-3.995-3.794L27.994 84v-4h-4a4 4 0 01-3.995-3.794L19.994 76V58.968a18.086 18.086 0 01-2.002-1.554L5.707 69.7a1 1 0 01-1.414-1.414L16.578 56a17.932 17.932 0 01-4.584-12c0-6.264 3.2-11.78 8.055-15.005l-.055.036V12a4 4 0 014-4h48l.206.005zM21.994 27.87a17.927 17.927 0 019.543-1.805l-.043-.003V23h33v24h-16.75l.007-.047a17.868 17.868 0 01-1.632 5.052c0-.002.002-.003.003-.005h17.872a1 1 0 010 2H44.962a18.096 18.096 0 01-3.656 4h22.688a1 1 0 010 2H38.247a17.922 17.922 0 01-8.253 2c-2.883 0-5.607-.679-8.023-1.884l.023.012V76a2 2 0 002 2h48a2 2 0 002-2V12a2 2 0 00-2-2h-48a2 2 0 00-2 2v15.871zm8 .129c-8.837 0-16 7.163-16 16s7.163 16 16 16c8.836 0 16-7.163 16-16s-7.164-16-16-16zm3.5-1.66c-.046-.01-.093-.017-.14-.026C41.69 27.89 47.994 35.209 47.994 44c0 .336-.01.669-.028 1h14.528V25h-29v1.34zM29.994 84a2 2 0 002 2h48a2 2 0 002-2V20a2 2 0 00-2-2h-4v58l-.005.206a4.002 4.002 0 01-3.789 3.79l-.206.004h-42v4z" fill="currentColor"></path>
+                </svg>
+                <span class="positions-empty__text">You have no position history.</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-
-      <!-- Positions View -->
-      <div id="positions-view" class="positions-area">
-        <table class="positions-table">
-          <thead>
-            <tr>
-              <th>Size</th>
-              <th>Entry Price</th>
-              <th>Mark Price</th>
-              <th>PNL(ROI%)</th>
-              <th>Liq.Price</th>
-              <th>TP/SL for position</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="positions-tbody"></tbody>
-        </table>
-        <div id="positions-empty" class="positions-empty">
-          <span class="positions-empty__icon">📋</span>
-          <span>No open positions</span>
-        </div>
-      </div>
-
-      <!-- History View -->
-      <div id="history-view" class="positions-area" style="display:none">
-        <!-- Filters -->
-        <div class="history-filters">
-          <div class="history-filters__note">
-            * Data may be displayed with a delay of 1-2 minutes, please click Refresh to update the data. <a href="#" onclick="return false">Refresh</a>
-          </div>
-          <div class="history-filters__periods">
-            <span class="history-filters__period history-filters__period--active" data-period="1d">1 Day</span>
-            <span class="history-filters__period" data-period="1w">1 Week</span>
-            <span class="history-filters__period" data-period="1m">1 Month</span>
-            <span class="history-filters__period" data-period="3m">3 Months</span>
-          </div>
-          <span class="history-filters__sep">Time</span>
-          <div class="history-filters__date-range">
-            <input type="date" id="history-date-from" disabled>
-            <span>→</span>
-            <input type="date" id="history-date-to" disabled>
-            <span style="cursor:default">📅</span>
-          </div>
-          <div class="history-filters__controls">
-            <select class="history-filters__select" disabled><option>Mode ▾</option></select>
-            <select class="history-filters__select" disabled><option>Symbol ▾</option></select>
-            <select class="history-filters__select" disabled><option>Status ▾</option></select>
-            <button class="history-filters__btn history-filters__btn--search" disabled>Search</button>
-            <button class="history-filters__btn history-filters__btn--reset" disabled>Reset</button>
-          </div>
-        </div>
-        <!-- History table -->
-        <table class="history-table">
-          <tbody id="history-tbody"></tbody>
-        </table>
-        <div id="history-empty" class="positions-empty" style="display:none">
-          <span class="positions-empty__icon">📋</span>
-          <span>No closed positions in this period</span>
-        </div>
-      </div>
-
+    
     </main>
   </div>
 

@@ -208,6 +208,16 @@
 .order-panel__input-suffix :not(span){
   color: black Im !important;
 }
+.positions-table__action-input::-webkit-outer-spin-button,
+.positions-table__action-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+.positions-table__action-input {
+  -moz-appearance: textfield;
+}
 
 .order-panel__input-suffix-arrow {
   font-size: 10px;

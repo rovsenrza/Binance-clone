@@ -81,6 +81,16 @@
             <input class="admin-form__input" id="coin-api" type="text" placeholder="Same as Symbol">
             <span class="admin-form__hint">Leave blank to use Symbol</span>
           </div>
+          <div class="admin-form__group">
+            <label class="admin-form__label" for="coin-price-precision">Price Precision</label>
+            <input class="admin-form__input" id="coin-price-precision" type="number" step="1" min="0" max="8" placeholder="e.g., 2" value="2">
+            <span class="admin-form__hint">Decimal places for price (e.g. 1 for BTC, 2 for ETH)</span>
+          </div>
+          <div class="admin-form__group">
+            <label class="admin-form__label" for="coin-qty-precision">Qty Precision</label>
+            <input class="admin-form__input" id="coin-qty-precision" type="number" step="1" min="0" max="8" placeholder="e.g., 3" value="3">
+            <span class="admin-form__hint">Decimal places for quantity (e.g. 3 for BTC, 2 for BNB)</span>
+          </div>
           <div class="admin-form__actions">
             <button type="submit" id="coin-submit" class="admin-btn admin-btn--primary">Add Coin</button>
             <button type="button" id="coin-cancel" class="admin-btn admin-btn--secondary">Cancel</button>
@@ -96,6 +106,8 @@
               <th>Quote Asset</th>
               <th>Display Name</th>
               <th>API Symbol</th>
+              <th>Price Dec.</th>
+              <th>Qty Dec.</th>
               <th>Actions</th>
             </tr>
           </thead>

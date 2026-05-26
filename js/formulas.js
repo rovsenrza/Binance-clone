@@ -109,3 +109,12 @@ export function formatQuantity(value, precision = 5) {
   if (value == null || isNaN(value)) return '--';
   return Number(value).toFixed(precision);
 }
+
+export function formatLargeNumber(value) {
+  if (value == null || isNaN(value)) return '--';
+  const num = Number(value);
+  if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + 'B';
+  if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + 'M';
+  if (num >= 1_000) return (num / 1_000).toFixed(2) + 'K';
+  return num.toFixed(2);
+}

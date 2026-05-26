@@ -1,3 +1,19 @@
+@font-face {
+  font-family: "BinanceNova";
+  src: url("../font/BinanceNova-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "BinanceNova";
+  src: url("../font/BinanceNova-Medium.woff2") format("woff2");
+  font-weight: 500 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* === GLOBAL THEME — Binance Futures Light Mode === */
 
 *, *::before, *::after {
@@ -17,7 +33,7 @@ html, body {
   --color-primary-bg: #FEF6D8;
 
   /* Semantic */
-  --color-long: #0ECB81;
+  --color-long: #2EBD85;
   --color-long-hover: #0BB574;
   --color-long-bg: rgba(14, 203, 129, 0.08);
   --color-short: #F6465D;
@@ -27,13 +43,13 @@ html, body {
   /* Text */
   --color-text-primary: #1E2329;
   --color-text-secondary: #474D57;
-  --color-text-tertiary: #848E9C;
+  --color-text-tertiary: #9c9c9c;
   --color-text-inverse: #FFFFFF;
 
   /* Surfaces */
   --color-bg-page: #FAFAFA;
   --color-bg-card: #FFFFFF;
-  --color-bg-header: #1E2329;
+  --color-bg-header: #000;
   --color-bg-input: #FAFAFA;
   --color-bg-hover: #F5F5F5;
 
@@ -48,7 +64,7 @@ html, body {
   --color-danger: #CF304A;
 
   /* Typography */
-  --font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-family: "BinanceNova", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-size-xs: 11px;
   --font-size-sm: 12px;
   --font-size-base: 13px;
@@ -89,7 +105,7 @@ html {
 body {
   font-family: var(--font-family);
   font-size: var(--font-size-base);
-  color: #1E2329;
+  color: #000;
   background-color: #FAFAFA;
   line-height: 1.5;
   overflow-x: hidden;
@@ -231,15 +247,17 @@ table {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
+  
+  border-radius: var(--radius-md);
 }
 
 
 /* === WARNING BANNER === */
 .warning-banner {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   min-height: 40px;
   padding: 8px 16px;
   font-size: 12px;
@@ -250,9 +268,14 @@ table {
 }
 
 .warning-banner__icon {
-  color: #F0B90B;
-  font-size: 14px;
-  flex-shrink: 0;
+  color: #000000;
+  display: flex;
+  align-items: center;
+}
+.warning-banner__icon svg {
+  display: block;
+  width: 20px;
+  height: 20px;
 }
 
 .warning-banner__text {

@@ -47,7 +47,7 @@ function renderCoinsTable() {
   if (!tbody) return;
 
   if (coins.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="admin-empty">No coins configured. Add one above.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="admin-empty">No coins configured. Add one above.</td></tr>`;
     return;
   }
 
@@ -58,6 +58,8 @@ function renderCoinsTable() {
       <td>${escapeHtml(coin.quoteAsset)}</td>
       <td>${escapeHtml(coin.displayName)}</td>
       <td>${escapeHtml(coin.apiSymbol || coin.symbol)}</td>
+      <td>${coin.pricePrecision ?? 2}</td>
+      <td>${coin.qtyPrecision ?? 3}</td>
       <td>
         <div class="admin-table__actions">
           <button class="admin-btn admin-btn--secondary admin-btn--sm" data-edit="${escapeHtml(coin.id)}">Edit</button>
@@ -99,6 +101,8 @@ function saveCoin() {
   const quoteAsset = document.getElementById('coin-quote')?.value?.trim().toUpperCase() || 'USDT';
   const displayName = document.getElementById('coin-display')?.value?.trim();
   const apiSymbol = document.getElementById('coin-api')?.value?.trim().toUpperCase() || symbol;
+  const pricePrecision = parseInt(document.getElementById('coin-price-precision')?.value, 10);
+  const qtyPrecision = parseInt(document.getElementById('coin-qty-precision')?.value, 10);
   const alertEl = document.getElementById('coin-alert');
 
   if (!symbol || !baseAsset) {
@@ -116,10 +120,12 @@ function saveCoin() {
     return;
   }
 
+  const resolvedPricePrecision = isNaN(pricePrecision) ? 2 : Math.max(0, Math.min(8, pricePrecision));
+  const resolvedQtyPrecision = isNaN(qtyPrecision) ? 3 : Math.max(0, Math.min(8, qtyPrecision));
   const coins = storage.getCoins();
 
   if (editingCoinId) {
-    storage.updateCoin(editingCoinId, { symbol, baseAsset, quoteAsset, displayName, apiSymbol });
+    storage.updateCoin(editingCoinId, { symbol, baseAsset, quoteAsset, displayName, apiSymbol, pricePrecision: resolvedPricePrecision, qtyPrecision: resolvedQtyPrecision });
     showAlert(alertEl, `${symbol} updated successfully.`, 'success');
   } else {
     const exists = coins.find(c => c.symbol === symbol);
@@ -131,8 +137,8 @@ function saveCoin() {
       symbol, baseAsset, quoteAsset,
       displayName: displayName || baseAsset,
       apiSymbol,
-      pricePrecision: baseAsset === 'BTC' ? 1 : 2,
-      qtyPrecision: baseAsset === 'BTC' ? 3 : 2,
+      pricePrecision: resolvedPricePrecision,
+      qtyPrecision: resolvedQtyPrecision,
     });
     showAlert(alertEl, `${symbol} added successfully.`, 'success');
   }
@@ -152,6 +158,8 @@ function editCoin(id) {
   document.getElementById('coin-quote').value = coin.quoteAsset;
   document.getElementById('coin-display').value = coin.displayName || '';
   document.getElementById('coin-api').value = coin.apiSymbol || coin.symbol;
+  document.getElementById('coin-price-precision').value = coin.pricePrecision ?? 2;
+  document.getElementById('coin-qty-precision').value = coin.qtyPrecision ?? 3;
 
   const submitBtn = document.getElementById('coin-submit');
   if (submitBtn) submitBtn.textContent = 'Update Coin';

@@ -74,6 +74,7 @@ export function openPosition({ symbol, direction, sizeUsdt, tp, sl }) {
     openFee: openFeeAmount,
     openTime: new Date().toISOString(),
     fundingRate: openFundingRate,
+    status: 'Open',
   };
 
   storage.addPosition(position);

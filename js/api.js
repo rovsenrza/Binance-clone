@@ -5,6 +5,7 @@ const priceData = {};
 const listeners = new Set();
 const wsConnections = {};
 let restFallbackTimer = null;
+let oiTimer = null;
 let connectionStatus = 'disconnected';
 
 export function getPriceData() {
@@ -70,14 +71,17 @@ async function fetchAllRest(symbols) {
       priceData[symbol] = {
         symbol,
         markPrice: premium ? parseFloat(premium.markPrice) : (ticker ? parseFloat(ticker.lastPrice) : existing.markPrice),
+        indexPrice: premium ? parseFloat(premium.indexPrice) : existing.indexPrice,
         lastPrice: ticker ? parseFloat(ticker.lastPrice) : existing.lastPrice,
         priceChange: ticker ? parseFloat(ticker.priceChange) : existing.priceChange,
         priceChangePercent: ticker ? parseFloat(ticker.priceChangePercent) : existing.priceChangePercent,
         highPrice: ticker ? parseFloat(ticker.highPrice) : existing.highPrice,
         lowPrice: ticker ? parseFloat(ticker.lowPrice) : existing.lowPrice,
         volume: ticker ? parseFloat(ticker.volume) : existing.volume,
+        quoteVolume: ticker ? parseFloat(ticker.quoteVolume) : existing.quoteVolume,
         fundingRate: premium ? parseFloat(premium.lastFundingRate) : existing.fundingRate,
         nextFundingTime: premium ? premium.nextFundingTime : existing.nextFundingTime,
+        openInterest: existing.openInterest,
         timestamp: Date.now(),
       };
       connectionStatus = 'connected';
@@ -146,6 +150,7 @@ function connectWebSocket(symbol) {
           highPrice: parseFloat(data.h),
           lowPrice: parseFloat(data.l),
           volume: parseFloat(data.v),
+          quoteVolume: parseFloat(data.q),
           timestamp: Date.now(),
         };
         notifyListeners(symbol);
@@ -190,18 +195,37 @@ function disconnectWebSocket(symbol) {
   delete wsConnections[symbol];
 }
 
+// --- Open Interest ---
+
+async function fetchOpenInterest(symbol) {
+  try {
+    const resp = await fetch(`${REST_BASE}/fapi/v1/openInterest?symbol=${symbol}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    const existing = priceData[symbol] || {};
+    priceData[symbol] = { ...existing, symbol, openInterest: parseFloat(data.openInterest) };
+    notifyListeners(symbol);
+  } catch (e) {
+    console.warn(`OI fetch failed for ${symbol}:`, e.message);
+  }
+}
+
 // --- Public API ---
 
 export function startPriceFeed(symbols) {
   if (!symbols || symbols.length === 0) return;
 
   fetchAllRest(symbols);
+  symbols.forEach(fetchOpenInterest);
 
   for (const symbol of symbols) {
     connectWebSocket(symbol);
   }
 
   startRestFallback(symbols);
+
+  if (oiTimer) clearInterval(oiTimer);
+  oiTimer = setInterval(() => symbols.forEach(fetchOpenInterest), 15000);
 }
 
 function startRestFallback(symbols) {

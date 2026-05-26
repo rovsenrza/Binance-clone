@@ -31,6 +31,7 @@ function init() {
 
   bindEvents();
   renderAll();
+  ui.initMetricSlider();
 
   updateTimer = setInterval(monitorLoop, 2000);
   countdownTimer = setInterval(updateCountdown, 1000);

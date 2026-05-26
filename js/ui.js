@@ -93,11 +93,18 @@ export function renderPairBlock(symbol, selectedCoin) {
   const countdownEl = el('pair-countdown');
   const highEl = el('pair-high');
   const lowEl = el('pair-low');
+  const markEl = el('pair-mark');
+  const indexEl = el('pair-index');
+  const volBaseEl = el('pair-vol-base');
+  const volBaseLabel = el('pair-vol-base-label');
+  const volQuoteEl = el('pair-vol-quote');
+  const oiEl = el('pair-open-interest');
   const symbolEl = el('pair-symbol-text');
   const iconEl = el('pair-coin-icon');
 
   if (symbolEl) symbolEl.textContent = symbol;
   if (iconEl) iconEl.innerHTML = coinIconHtml(baseAsset, 24);
+  if (volBaseLabel) volBaseLabel.textContent = `24h Vol(${baseAsset})`;
 
   if (!data) {
     if (priceEl) priceEl.textContent = '--';
@@ -125,9 +132,14 @@ export function renderPairBlock(symbol, selectedCoin) {
                           <span class="${colorClass}">${sign}${pctChange}%</span>`;
   }
 
+  if (markEl) markEl.textContent = formulas.formatPrice(data.markPrice ?? 0, precision);
+  if (indexEl) indexEl.textContent = data.indexPrice ? formulas.formatPrice(data.indexPrice, precision) : '--';
+
   if (fundingEl) {
     const rate = data.fundingRate ?? 0;
+    const fundingColor = rate >= 0 ? 'text-long' : 'text-short';
     fundingEl.textContent = (rate * 100).toFixed(4) + '%';
+    fundingEl.className = fundingColor;
   }
 
   if (countdownEl) {
@@ -136,6 +148,35 @@ export function renderPairBlock(symbol, selectedCoin) {
 
   if (highEl) highEl.textContent = formulas.formatPrice(data.highPrice ?? 0, precision);
   if (lowEl) lowEl.textContent = formulas.formatPrice(data.lowPrice ?? 0, precision);
+
+  if (volBaseEl && data.volume != null) {
+    volBaseEl.textContent = formulas.formatLargeNumber(data.volume);
+  }
+  if (volQuoteEl && data.quoteVolume != null) {
+    volQuoteEl.textContent = formulas.formatLargeNumber(data.quoteVolume);
+  }
+  if (oiEl && data.openInterest != null && price > 0) {
+    oiEl.textContent = formulas.formatLargeNumber(data.openInterest * price);
+  }
+}
+
+export function initMetricSlider() {
+  const scrollEl = el('pair-metrics-scroll');
+  const prevBtn = el('metrics-prev');
+  const nextBtn = el('metrics-next');
+  if (!scrollEl || !prevBtn || !nextBtn) return;
+
+  function updateChevrons() {
+    const atStart = scrollEl.scrollLeft <= 1;
+    const atEnd = scrollEl.scrollLeft + scrollEl.clientWidth >= scrollEl.scrollWidth - 1;
+    prevBtn.classList.toggle('metric-bar__chevron--hidden', atStart);
+    nextBtn.classList.toggle('metric-bar__chevron--hidden', atEnd);
+  }
+
+  prevBtn.addEventListener('click', () => scrollEl.scrollBy({ left: -220, behavior: 'smooth' }));
+  nextBtn.addEventListener('click', () => scrollEl.scrollBy({ left: 220, behavior: 'smooth' }));
+  scrollEl.addEventListener('scroll', updateChevrons, { passive: true });
+  updateChevrons();
 }
 
 // --- Account Block ---
@@ -260,11 +301,7 @@ export function renderPositionsTable(positions, prices, settings) {
       </div>
       <div class="positions-row__col positions-row__col--size"><span class="positions-table__size ${sizeColor}">${formulas.formatPrice(pos.sizeUsdt, 2)} USDT</span></div>
       <div class="positions-row__col positions-row__col--entry">${formulas.formatPrice(pos.entryPrice, pricePrecision)}</div>
-      <div class="positions-row__col positions-row__col--breakeven">${formulas.formatPrice(metrics.breakEven, pricePrecision)}</div>
       <div class="positions-row__col positions-row__col--mark">${markPriceFormatted}</div>
-      <div class="positions-row__col positions-row__col--liq">${formulas.formatPrice(metrics.liqPrice, 2)}</div>
-      <div class="positions-row__col positions-row__col--ratio"><span class="text-long">${metrics.marginRatio}</span></div>
-      <div class="positions-row__col positions-row__col--margin">${formulas.formatPrice(metrics.margin, 4)} USDT</div>
       <div class="positions-row__col positions-row__col--pnl">
         <div class="positions-table__pnl">
           <span class="positions-table__pnl-value ${pnlColor}">${formulas.formatPnl(metrics.pnl, 2)} USDT</span>
@@ -272,7 +309,8 @@ export function renderPositionsTable(positions, prices, settings) {
         </div>
         <span class="positions-table__share">⤴</span>
       </div>
-      <div class="positions-row__col positions-row__col--funding">${formulas.formatPnl(metrics.estFunding, 4)} USDT</div>
+      <div class="positions-row__col positions-row__col--liq">${formulas.formatPrice(metrics.liqPrice, 2)}</div>
+      <div class="positions-row__col positions-row__col--tpsl positions-table__tpsl">${pos.tp ? formulas.formatPrice(pos.tp, pricePrecision) : '--'} / ${pos.sl ? formulas.formatPrice(pos.sl, pricePrecision) : '--'}</div>
       <div class="positions-row__col positions-row__col--close">
         <div class="positions-table__action">
           <span class="positions-table__action-btn positions-table__action-btn--market"
@@ -280,13 +318,8 @@ export function renderPositionsTable(positions, prices, settings) {
                 title="Close at market price"
                 style="cursor:pointer">Market</span>
           <span class="positions-table__action-btn positions-table__action-btn--limit">Limit</span>
-          <input class="positions-table__action-input" type="text" value="${markPriceFormatted}" readonly>
-          <input class="positions-table__action-input" type="text" value="${qtyFormatted}" readonly>
         </div>
       </div>
-      <div class="positions-row__col positions-row__col--reverse">--</div>
-      <div class="positions-row__col positions-row__col--tpsl positions-table__tpsl">${pos.tp ? formulas.formatPrice(pos.tp, pricePrecision) : '--'} / ${pos.sl ? formulas.formatPrice(pos.sl, pricePrecision) : '--'}</div>
-      <div class="positions-row__col positions-row__col--tpsl-split">--</div>
     </div>`;
   });
 
@@ -342,7 +375,8 @@ export function renderHistoryTable(historyItems) {
 
   const rows = historyItems.map(h => {
     const coin = storage.getCoinBySymbol(h.symbol);
-    const baseAsset = escapeHtml(h.baseAsset || h.symbol.replace('USDT', ''));
+    const baseAsset = h.baseAsset || h.symbol.replace('USDT', '');
+    const safeBaseAsset = escapeHtml(baseAsset);
     const safeSymbol = escapeHtml(h.symbol);
     const safeMode = escapeHtml(h.marginMode);
     const safeDir = escapeHtml(h.direction);
@@ -357,12 +391,12 @@ export function renderHistoryTable(historyItems) {
       <td colspan="100%">
         <div style="padding: 8px 0;">
           <div class="history-table__symbol-row" style="margin-bottom: 8px;">
-            <span class="history-table__coin-icon history-table__coin-icon--${baseAsset}">${baseAsset[0]}</span>
+            <span style="display:inline-flex;align-items:center;width:20px;height:20px">${coinIconHtml(baseAsset, 20)}</span>
             <strong>${safeSymbol}</strong>
             <div class="history-table__badges">
               <span class="history-table__badge">Perp</span>
               <span class="history-table__badge">${escapeHtml(h.leverage)}x</span>
-              <span class="history-table__direction ${dirClass}">${safeMode} ${safeDir}</span>
+              <span class="history-table__direction ${dirClass}">${safeDir}</span>
               <span class="history-table__status">Closed</span>
               <button class="history-table__share" data-share-id="${safeShareId}" title="Share">⤴</button>
             </div>
@@ -380,7 +414,7 @@ export function renderHistoryTable(historyItems) {
               <span class="history-table__detail-value ${roiColor}">${formulas.formatPercent(h.roiPercent, 2)}</span>
             </div>
             <div class="history-table__detail">
-              <span class="history-table__detail-label">Closed Vol. (${baseAsset})</span>
+              <span class="history-table__detail-label">Closed Vol. (${safeBaseAsset})</span>
               <span class="history-table__detail-value">${formulas.formatQuantity(h.closedVolume, qtyPrecision)}</span>
             </div>
             <div class="history-table__detail">
@@ -392,8 +426,12 @@ export function renderHistoryTable(historyItems) {
               <span class="history-table__detail-value">${formulas.formatPrice(h.avgClosePrice, pricePrecision)}</span>
             </div>
             <div class="history-table__detail">
-              <span class="history-table__detail-label">Max OI (${baseAsset})</span>
+              <span class="history-table__detail-label">Max OI (${safeBaseAsset})</span>
               <span class="history-table__detail-value">${formulas.formatQuantity(h.maxOI, qtyPrecision)}</span>
+            </div>
+            <div class="history-table__detail">
+              <span class="history-table__detail-label">Margin Mode</span>
+              <span class="history-table__detail-value">${safeMode}</span>
             </div>
           </div>
         </div>
@@ -459,9 +497,9 @@ export function renderTickerBar(coins, prices) {
     const pct = data.priceChangePercent ?? 0;
     const colorClass = pct >= 0 ? 'text-long' : 'text-short';
     const price = formulas.formatPrice(data.markPrice || data.lastPrice || 0, coin.pricePrecision ?? 1);
-    const safeBase = escapeHtml(coin.baseAsset || coin.symbol.replace('USDT', ''));
+    const baseAsset = coin.baseAsset || coin.symbol.replace('USDT', '');
     html += `<div class="ticker-bar__item">
-      <span class="ticker-bar__coin" style="width:14px;height:14px;border-radius:50%;background:#F0B90B;display:inline-flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#1E2329">${safeBase[0]}</span>
+      <span class="ticker-bar__coin" style="width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center">${coinIconHtml(baseAsset, 14)}</span>
       <span class="ticker-bar__symbol">${escapeHtml(coin.symbol)}</span>
       <span class="ticker-bar__change ${colorClass}">${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</span>
       <span class="ticker-bar__price">${price}</span>

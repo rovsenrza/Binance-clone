@@ -318,6 +318,16 @@ export function renderPositionsTable(positions, prices, settings) {
                 title="Close at market price"
                 style="cursor:pointer">Market</span>
           <span class="positions-table__action-btn positions-table__action-btn--limit">Limit</span>
+          <input class="positions-table__action-input"
+                 data-close-price="${safeId}"
+                 type="number"
+                 value="${formulas.formatPrice(markPrice, pricePrecision).replace(/,/g, '')}"
+                 step="any" />
+          <input class="positions-table__action-input"
+                 data-close-qty="${safeId}"
+                 type="number"
+                 value="${formulas.formatQuantity(pos.quantity, coin?.qtyPrecision ?? 3)}"
+                 step="any" />
         </div>
       </div>
     </div>`;

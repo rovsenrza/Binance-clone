@@ -205,6 +205,9 @@
   align-items: center;
   gap: var(--space-4);
 }
+.order-panel__input-suffix :not(span){
+  color: black Im !important;
+}
 
 .order-panel__input-suffix-arrow {
   font-size: 10px;
@@ -897,7 +900,7 @@
 .positions-row__col--tpsl { width: 130px; flex: 1 0 130px; }
 
 .positions-header__col--close,
-.positions-row__col--close { width: 280px; flex: 1 0 280px; }
+.positions-row__col--close { width: 360px; flex: 1 0 360px; }
 
 .positions-header__col--close {
   display: flex;

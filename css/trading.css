@@ -766,6 +766,8 @@
   content: "";
   position: absolute;
   bottom: 0;
+  width: 20px ;
+  margin-inline: auto;
   left: 0;
   right: 0;
   height: 2px;

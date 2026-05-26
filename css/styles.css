@@ -29,7 +29,7 @@ html, body {
 :root {
   /* Primary brand */
   --color-primary: #FCD535;
-  --color-primary-hover: #F0B90B;
+  --color-primary-hover: #FCD535;
   --color-primary-bg: #FEF6D8;
 
   /* Semantic */

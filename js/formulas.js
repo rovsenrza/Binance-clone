@@ -31,8 +31,8 @@ export function funding(posValue, fundingRate) {
   return posValue * fundingRate;
 }
 
-export function realizedPnl(pnlAtClose, fees, fundingCost) {
-  return pnlAtClose - fees - fundingCost;
+export function realizedPnl(pnlAtClose, openFee, closeFee, fundingCost) {
+  return pnlAtClose - openFee - closeFee - fundingCost;
 }
 
 

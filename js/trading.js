@@ -99,7 +99,9 @@ export function closePosition(positionId, closePrice) {
   const currentTicker = getTickerData(pos.symbol);
   const effectiveFundingRate = currentTicker?.fundingRate || pos.fundingRate || 0;
   const fundingCost = formulas.funding(posValue, effectiveFundingRate);
-  const realized = formulas.realizedPnl(pnlAtClose, closeFeeAmount, fundingCost);
+  const openFeeAmount = pos.openFee || 0;
+  const netRealized = formulas.realizedPnl(pnlAtClose, openFeeAmount, closeFeeAmount, fundingCost);
+  const balanceDelta = pnlAtClose - closeFeeAmount - fundingCost;
 
   const marginAmount = formulas.margin(posValue, pos.leverage);
 
@@ -107,11 +109,12 @@ export function closePosition(positionId, closePrice) {
     ...pos,
     closePrice,
     closeTime: new Date().toISOString(),
-    realizedPnl: realized,
+    realizedPnl: netRealized,
     pnlAtClose,
+    openFee: openFeeAmount,
     closeFee: closeFeeAmount,
     fundingCost,
-    roiPercent: formulas.roi(pnlAtClose, marginAmount),
+    roiPercent: formulas.roi(netRealized, marginAmount),
     closedVolume: pos.quantity,
     avgClosePrice: closePrice,
     maxOI: pos.quantity,
@@ -122,8 +125,7 @@ export function closePosition(positionId, closePrice) {
   storage.removePosition(positionId);
 
   const currentBalance = storage.getBalance();
-  const newBalance = currentBalance + realized;
-  storage.setBalance(newBalance);
+  storage.setBalance(currentBalance + balanceDelta);
 
   return historyEntry;
 }
@@ -175,15 +177,19 @@ function liquidatePosition(pos) {
   const marginAmount = formulas.margin(posValue, pos.leverage);
   const liqVal = formulas.liqPrice(pos.direction, pos.entryPrice, pos.leverage, settings.mmr);
 
+  const openFeeAmount = pos.openFee || 0;
+  const netRealized = -marginAmount - openFeeAmount;
+
   const historyEntry = {
     ...pos,
     closePrice: liqVal,
     closeTime: new Date().toISOString(),
-    realizedPnl: -marginAmount,
+    realizedPnl: netRealized,
     pnlAtClose: -marginAmount,
+    openFee: openFeeAmount,
     closeFee: 0,
     fundingCost: 0,
-    roiPercent: -100,
+    roiPercent: formulas.roi(netRealized, marginAmount),
     closedVolume: pos.quantity,
     avgClosePrice: liqVal,
     maxOI: pos.quantity,

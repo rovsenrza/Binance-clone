@@ -211,13 +211,18 @@ export function renderCalcFields(size, markPrice, settings, direction) {
   const maxLongEl = el('calc-max-long');
   const maxShortEl = el('calc-max-short');
 
+  const leverage = settings.leverage;
+  const avbl = formulas.availableBalance(storage.getBalance(), storage.getPositions(), leverage);
+  const maxVal = formulas.maxPositionSize(avbl, leverage);
+  if (maxLongEl) maxLongEl.textContent = formulas.formatPrice(maxVal, 2) + ' USDT';
+  if (maxShortEl) maxShortEl.textContent = formulas.formatPrice(maxVal, 2) + ' USDT';
+
   if (!markPrice || !size || size <= 0) {
     [liqLongEl, liqShortEl].forEach(e => { if (e) e.textContent = '-- USDT'; });
-    [costLongEl, costShortEl, maxLongEl, maxShortEl].forEach(e => { if (e) e.textContent = '0.00 USDT'; });
+    [costLongEl, costShortEl].forEach(e => { if (e) e.textContent = '0.00 USDT'; });
     return;
   }
 
-  const leverage = settings.leverage;
   const mmr = settings.mmr;
   const posValue = size;
   const marginVal = formulas.margin(posValue, leverage);
@@ -231,11 +236,6 @@ export function renderCalcFields(size, markPrice, settings, direction) {
   if (liqShortEl) liqShortEl.textContent = formulas.formatPrice(liqShort, 2) + ' USDT';
   if (costLongEl) costLongEl.textContent = formulas.formatPrice(cost, 2) + ' USDT';
   if (costShortEl) costShortEl.textContent = formulas.formatPrice(cost, 2) + ' USDT';
-
-  const avbl = formulas.availableBalance(storage.getBalance(), storage.getPositions(), leverage);
-  const maxVal = formulas.maxPositionSize(avbl, leverage);
-  if (maxLongEl) maxLongEl.textContent = formulas.formatPrice(maxVal, 2) + ' USDT';
-  if (maxShortEl) maxShortEl.textContent = formulas.formatPrice(maxVal, 2) + ' USDT';
 }
 
 // --- Positions Table ---
@@ -275,27 +275,29 @@ export function renderPositionsTable(positions, prices, settings) {
     const fundingRate = prices[pos.symbol]?.fundingRate ?? pos.fundingRate ?? 0;
     const metrics = calcPosMetrics(pos, markPrice, settings, fundingRate, feeRate);
     const coin = storage.getCoinBySymbol(pos.symbol);
-    const baseAsset = coin?.baseAsset || pos.symbol.replace('USDT', '');
     const pricePrecision = coin?.pricePrecision ?? 2;
     const sizeColor = pos.direction === 'Long' ? 'text-long' : 'text-short';
-    const dirClass = pos.direction === 'Long' ? 'text-long' : 'text-short';
     const pnlColor = pnlClass(metrics.pnl);
     const safeId = escapeHtml(pos.id);
     const safeSymbol = escapeHtml(pos.symbol);
-    const safeMode = escapeHtml(pos.marginMode || 'Cross');
-    const safeDir = escapeHtml(pos.direction);
+    const safeLeverage = escapeHtml(String(pos.leverage));
 
     const markPriceFormatted = formulas.formatPrice(markPrice, pricePrecision);
     const qtyFormatted = formulas.formatQuantity(pos.quantity, coin?.qtyPrecision ?? 3);
-    const iconHtml = coinIconHtml(baseAsset, 16);
+    const barClass = pos.direction === 'Long' ? 'positions-row__direction-bar--long' : 'positions-row__direction-bar--short';
+    const tpVal = pos.tp ? formulas.formatPrice(pos.tp, pricePrecision) : '--';
+    const slVal = pos.sl ? formulas.formatPrice(pos.sl, pricePrecision) : '--';
 
     return `<div class="positions-row" data-position-id="${safeId}">
       <div class="positions-row__col positions-row__col--symbol">
         <div class="positions-row__symbol">
-          ${iconHtml}
+          <span class="positions-row__direction-bar ${barClass}"></span>
           <div class="positions-row__symbol-info">
             <span class="positions-row__symbol-name">${safeSymbol}</span>
-            <span class="positions-row__symbol-meta">Perp · ${safeMode} · <span class="${dirClass}">${safeDir} ${escapeHtml(String(pos.leverage))}x</span></span>
+            <span class="positions-row__symbol-meta">
+              <span class="positions-row__tag">Perp</span>
+              <span class="positions-row__tag">${safeLeverage}x</span>
+            </span>
           </div>
         </div>
       </div>
@@ -303,14 +305,21 @@ export function renderPositionsTable(positions, prices, settings) {
       <div class="positions-row__col positions-row__col--entry">${formulas.formatPrice(pos.entryPrice, pricePrecision)}</div>
       <div class="positions-row__col positions-row__col--mark">${markPriceFormatted}</div>
       <div class="positions-row__col positions-row__col--pnl">
-        <div class="positions-table__pnl">
-          <span class="positions-table__pnl-value ${pnlColor}">${formulas.formatPnl(metrics.pnl, 2)} USDT</span>
-          <span class="positions-table__pnl-roi ${pnlColor}">${formulas.formatPercent(metrics.roi, 2)}</span>
+        <div class="positions-table__pnl-wrap">
+          <div class="positions-table__pnl">
+            <span class="positions-table__pnl-value ${pnlColor}">${formulas.formatPnl(metrics.pnl, 2)} USDT</span>
+            <span class="positions-table__pnl-roi ${pnlColor}">${formulas.formatPercent(metrics.roi, 2)}</span>
+          </div>
+          <span class="positions-table__share"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 512 512"><path d="M361.824 344.395c-24.531 0-46.633 10.593-61.972 27.445l-137.973-85.453A83.321 83.321 0 0 0 167.605 256a83.29 83.29 0 0 0-5.726-30.387l137.973-85.457c15.34 16.852 37.441 27.45 61.972 27.45 46.211 0 83.805-37.594 83.805-83.805C445.629 37.59 408.035 0 361.824 0c-46.21 0-83.804 37.594-83.804 83.805a83.403 83.403 0 0 0 5.726 30.386l-137.969 85.454c-15.34-16.852-37.441-27.45-61.972-27.45C37.594 172.195 0 209.793 0 256c0 46.21 37.594 83.805 83.805 83.805 24.53 0 46.633-10.594 61.972-27.45l137.97 85.454a83.408 83.408 0 0 0-5.727 30.39c0 46.207 37.593 83.801 83.804 83.801s83.805-37.594 83.805-83.8c0-46.212-37.594-83.805-83.805-83.805zm-53.246-260.59c0-29.36 23.887-53.246 53.246-53.246s53.246 23.886 53.246 53.246c0 29.36-23.886 53.246-53.246 53.246s-53.246-23.887-53.246-53.246zM83.805 309.246c-29.364 0-53.25-23.887-53.25-53.246s23.886-53.246 53.25-53.246c29.36 0 53.242 23.887 53.242 53.246s-23.883 53.246-53.242 53.246zm224.773 118.95c0-29.36 23.887-53.247 53.246-53.247s53.246 23.887 53.246 53.246c0 29.36-23.886 53.246-53.246 53.246s-53.246-23.886-53.246-53.246z" fill="currentColor"></path></svg></span>
         </div>
-        <span class="positions-table__share"><svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" width="16" height="16" x="0" y="0" viewBox="0 0 512 512.001" style="enable-background:new 0 0 512 512" xml:space="preserve" class=""><g><path d="M361.824 344.395c-24.531 0-46.633 10.593-61.972 27.445l-137.973-85.453A83.321 83.321 0 0 0 167.605 256a83.29 83.29 0 0 0-5.726-30.387l137.973-85.457c15.34 16.852 37.441 27.45 61.972 27.45 46.211 0 83.805-37.594 83.805-83.805C445.629 37.59 408.035 0 361.824 0c-46.21 0-83.804 37.594-83.804 83.805a83.403 83.403 0 0 0 5.726 30.386l-137.969 85.454c-15.34-16.852-37.441-27.45-61.972-27.45C37.594 172.195 0 209.793 0 256c0 46.21 37.594 83.805 83.805 83.805 24.53 0 46.633-10.594 61.972-27.45l137.97 85.454a83.408 83.408 0 0 0-5.727 30.39c0 46.207 37.593 83.801 83.804 83.801s83.805-37.594 83.805-83.8c0-46.212-37.594-83.805-83.805-83.805zm-53.246-260.59c0-29.36 23.887-53.246 53.246-53.246s53.246 23.886 53.246 53.246c0 29.36-23.886 53.246-53.246 53.246s-53.246-23.887-53.246-53.246zM83.805 309.246c-29.364 0-53.25-23.887-53.25-53.246s23.886-53.246 53.25-53.246c29.36 0 53.242 23.887 53.242 53.246s-23.883 53.246-53.242 53.246zm224.773 118.95c0-29.36 23.887-53.247 53.246-53.247s53.246 23.887 53.246 53.246c0 29.36-23.886 53.246-53.246 53.246s-53.246-23.886-53.246-53.246zm0 0" fill="#000000" opacity="1" data-original="#000000"></path></g></svg></span>
       </div>
-      <div class="positions-row__col positions-row__col--liq">${formulas.formatPrice(metrics.liqPrice, 2)}</div>
-      <div class="positions-row__col positions-row__col--tpsl positions-table__tpsl">${pos.tp ? formulas.formatPrice(pos.tp, pricePrecision) : '--'} / ${pos.sl ? formulas.formatPrice(pos.sl, pricePrecision) : '--'}</div>
+      <div class="positions-row__col positions-row__col--liq"><span class="positions-table__liq">${formulas.formatPrice(metrics.liqPrice, 2)}</span></div>
+      <div class="positions-row__col positions-row__col--tpsl">
+        <div class="positions-table__tpsl-values">
+          <span>${tpVal}</span>
+          <span>${slVal}</span>
+        </div>
+      </div>
       <div class="positions-row__col positions-row__col--close">
         <div class="positions-table__action">
           <span class="positions-table__action-btn positions-table__action-btn--market"
@@ -392,10 +401,13 @@ export function renderHistoryTable(historyItems) {
     const safeDir = escapeHtml(h.direction);
     const dirClass = h.direction === 'Long' ? 'history-table__direction--long' : 'history-table__direction--short';
     const pnlColor = pnlClass(h.realizedPnl);
-    const roiColor = pnlClass(h.roiPercent);
+    const roiColor = pnlClass(h.realizedPnl);
     const pricePrecision = coin?.pricePrecision ?? 2;
     const qtyPrecision = coin?.qtyPrecision ?? 3;
     const safeShareId = escapeHtml(h.historyId || h.id);
+    const openFeeVal = h.openFee ?? 0;
+    const closeFeeVal = h.closeFee ?? 0;
+    const fundingVal = h.fundingCost ?? 0;
 
     return `<tr>
       <td colspan="100%">
@@ -424,6 +436,18 @@ export function renderHistoryTable(historyItems) {
             <div class="history-table__detail">
               <span class="history-table__detail-label">ROI</span>
               <span class="history-table__detail-value ${roiColor}">${formulas.formatPercent(h.roiPercent, 2)}</span>
+            </div>
+            <div class="history-table__detail">
+              <span class="history-table__detail-label">Open Fee</span>
+              <span class="history-table__detail-value">-${formulas.formatPrice(openFeeVal, 4)} USDT</span>
+            </div>
+            <div class="history-table__detail">
+              <span class="history-table__detail-label">Close Fee</span>
+              <span class="history-table__detail-value">-${formulas.formatPrice(closeFeeVal, 4)} USDT</span>
+            </div>
+            <div class="history-table__detail">
+              <span class="history-table__detail-label">Funding</span>
+              <span class="history-table__detail-value">-${formulas.formatPrice(fundingVal, 4)} USDT</span>
             </div>
             <div class="history-table__detail">
               <span class="history-table__detail-label">Closed Vol. (${safeBaseAsset})</span>

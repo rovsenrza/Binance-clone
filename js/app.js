@@ -14,7 +14,12 @@ async function init() {
     await storage.initStorage();
   } catch (e) {
     console.error(e);
-    ui.showToast('Failed to load saved data', 'error');
+    const msg = String(e?.message || e);
+    if (msg.includes('permission') || msg.includes('PERMISSION_DENIED')) {
+      ui.showToast('Firestore access denied — publish rules in Firebase Console', 'error');
+    } else {
+      ui.showToast('Failed to load saved data', 'error');
+    }
     return;
   }
 

@@ -14,7 +14,13 @@ async function init() {
     await storage.initStorage();
   } catch (e) {
     console.error(e);
-    showAlert(document.getElementById('coin-alert'), 'Failed to load saved data.', 'danger');
+    const msg = String(e?.message || e);
+    const alertEl = document.getElementById('coin-alert');
+    if (msg.includes('permission') || msg.includes('PERMISSION_DENIED')) {
+      showAlert(alertEl, 'Firestore access denied. Open Firebase Console → Firestore → Rules → Publish (see firestore.rules in project).', 'danger');
+    } else {
+      showAlert(alertEl, 'Failed to load saved data.', 'danger');
+    }
     return;
   }
 

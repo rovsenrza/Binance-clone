@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Demo: open read/write. Tighten with request.auth for production.
+    match /bf_app/{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -1,4 +1,14 @@
+import {
+  doc,
+  getDoc,
+  setDoc,
+  onSnapshot,
+} from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+import { initFirebase, getDb, isFirebaseConfigured } from './firebase.js';
+
 const PREFIX = 'bf_';
+const STATE_COLLECTION = 'bf_app';
+const STATE_DOC_ID = 'state';
 
 const KEYS = {
   coins: `${PREFIX}coins`,
@@ -39,6 +49,39 @@ const DEFAULT_SETTINGS = {
   mmr: 0.005,
 };
 
+const MIGRATED_FLAG = `${PREFIX}firestore_migrated`;
+
+let cache = createDefaultCache();
+let useFirestore = false;
+let persistChain = Promise.resolve();
+let unsubscribeSnapshot = null;
+let initDone = false;
+let lastLocalUpdatedAt = null;
+let lastAppliedRemoteUpdatedAt = null;
+
+function createDefaultCache() {
+  return {
+    coins: structuredClone(DEFAULT_COINS),
+    positions: [],
+    history: [],
+    settings: { ...DEFAULT_SETTINGS },
+    balance: DEFAULT_SETTINGS.initialBalance,
+    selectedCoin: null,
+  };
+}
+
+function stateDocRef() {
+  return doc(getDb(), STATE_COLLECTION, STATE_DOC_ID);
+}
+
+function dispatchStorageError(message) {
+  window.dispatchEvent(new CustomEvent('storage-error', {
+    detail: { message },
+  }));
+}
+
+// --- localStorage (backup + offline fallback) ---
+
 function safeGet(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
@@ -56,57 +99,232 @@ function safeSet(key, value) {
     return true;
   } catch (e) {
     console.error(`Failed to write to localStorage key: ${key}`, e);
-    window.dispatchEvent(new CustomEvent('storage-error', {
-      detail: { key, message: 'Storage full — data may not be saved' }
-    }));
+    dispatchStorageError('Storage full — data may not be saved');
     return false;
   }
 }
 
-export function initStorage() {
-  if (!safeGet(KEYS.coins, null)) {
-    safeSet(KEYS.coins, DEFAULT_COINS);
+function loadCacheFromLocalStorage() {
+  const settings = safeGet(KEYS.settings, null) ?? { ...DEFAULT_SETTINGS };
+  cache = {
+    coins: safeGet(KEYS.coins, null) ?? structuredClone(DEFAULT_COINS),
+    positions: safeGet(KEYS.positions, null) ?? [],
+    history: safeGet(KEYS.history, null) ?? [],
+    settings,
+    balance: safeGet(KEYS.balance, null) ?? settings.initialBalance,
+    selectedCoin: safeGet(KEYS.selectedCoin, null),
+  };
+}
+
+function mirrorCacheToLocalStorage() {
+  safeSet(KEYS.coins, cache.coins);
+  safeSet(KEYS.positions, cache.positions);
+  safeSet(KEYS.history, cache.history);
+  safeSet(KEYS.settings, cache.settings);
+  safeSet(KEYS.balance, cache.balance);
+  if (cache.selectedCoin) {
+    safeSet(KEYS.selectedCoin, cache.selectedCoin);
+  } else {
+    try { localStorage.removeItem(KEYS.selectedCoin); } catch { /* noop */ }
   }
-  if (!safeGet(KEYS.positions, null)) {
-    safeSet(KEYS.positions, []);
+}
+
+function hasLocalStorageData() {
+  return (
+    safeGet(KEYS.coins, null) !== null
+    || safeGet(KEYS.positions, null) !== null
+    || safeGet(KEYS.history, null) !== null
+  );
+}
+
+function normalizeFirestoreData(data) {
+  const settings = data.settings ?? { ...DEFAULT_SETTINGS };
+  return {
+    coins: Array.isArray(data.coins) && data.coins.length ? data.coins : structuredClone(DEFAULT_COINS),
+    positions: Array.isArray(data.positions) ? data.positions : [],
+    history: Array.isArray(data.history) ? data.history : [],
+    settings,
+    balance: typeof data.balance === 'number' ? data.balance : settings.initialBalance,
+    selectedCoin: data.selectedCoin ?? null,
+  };
+}
+
+function cacheFingerprint() {
+  return JSON.stringify(cache);
+}
+
+function applyRemoteCache(next, meta = {}) {
+  const fp = cacheFingerprint();
+  cache = next;
+  mirrorCacheToLocalStorage();
+  if (cacheFingerprint() !== fp) {
+    window.dispatchEvent(new CustomEvent('storage-remote-update', {
+      detail: {
+        fromRemote: meta.fromRemote === true,
+        updatedAt: meta.updatedAt ?? null,
+      },
+    }));
   }
-  if (!safeGet(KEYS.history, null)) {
-    safeSet(KEYS.history, []);
+}
+
+// --- Firestore ---
+
+async function loadFromFirestore() {
+  const ref = stateDocRef();
+  const snap = await getDoc(ref);
+
+  if (snap.exists()) {
+    const data = snap.data();
+    cache = normalizeFirestoreData(data);
+    lastAppliedRemoteUpdatedAt = data.updatedAt ?? null;
+    mirrorCacheToLocalStorage();
+    return;
   }
-  if (!safeGet(KEYS.settings, null)) {
-    safeSet(KEYS.settings, DEFAULT_SETTINGS);
+
+  // One-time migration: browser localStorage → Firestore (shared cloud state)
+  if (hasLocalStorageData() && !safeGet(MIGRATED_FLAG, false)) {
+    loadCacheFromLocalStorage();
+  } else {
+    cache = createDefaultCache();
   }
-  if (safeGet(KEYS.balance, null) === null) {
-    const settings = getSettings();
-    safeSet(KEYS.balance, settings.initialBalance);
-  }
+
   migrateMarginMode();
+  mirrorCacheToLocalStorage();
+  await writeToFirestore();
+  safeSet(MIGRATED_FLAG, true);
+}
+
+async function writeToFirestore() {
+  if (!useFirestore) return true;
+  try {
+    const ref = stateDocRef();
+    lastLocalUpdatedAt = new Date().toISOString();
+    await setDoc(ref, {
+      ...cache,
+      updatedAt: lastLocalUpdatedAt,
+    });
+    return true;
+  } catch (e) {
+    console.error('Firestore write failed', e);
+    dispatchStorageError('Cloud save failed — check Firebase config and rules');
+    return false;
+  }
+}
+
+function subscribeToFirestore() {
+  if (!useFirestore) return;
+  const ref = stateDocRef();
+  if (unsubscribeSnapshot) unsubscribeSnapshot();
+
+  unsubscribeSnapshot = onSnapshot(
+    ref,
+    (snap) => {
+      if (!snap.exists() || !initDone) return;
+      const data = snap.data();
+      const updatedAt = data.updatedAt ?? null;
+
+      // Skip echo of our own write; apply updates from other devices/tabs
+      if (updatedAt && updatedAt === lastLocalUpdatedAt) return;
+      if (updatedAt && updatedAt === lastAppliedRemoteUpdatedAt) return;
+
+      lastAppliedRemoteUpdatedAt = updatedAt;
+      const fromRemote = Boolean(updatedAt && updatedAt !== lastLocalUpdatedAt);
+      applyRemoteCache(normalizeFirestoreData(data), { fromRemote, updatedAt });
+    },
+    (err) => {
+      console.error('Firestore listener error', err);
+      dispatchStorageError('Cloud sync error');
+    },
+  );
+}
+
+function enqueuePersist() {
+  mirrorCacheToLocalStorage();
+  if (!useFirestore) return persistChain;
+
+  persistChain = persistChain
+    .then(() => writeToFirestore())
+    .catch((e) => {
+      console.error('Persist queue error', e);
+      dispatchStorageError('Cloud save failed');
+    });
+
+  return persistChain;
+}
+
+export function isCloudSyncEnabled() {
+  return useFirestore;
+}
+
+export async function whenReady() {
+  if (initDone) return;
+  await initStorage();
+}
+
+// --- Init ---
+
+export async function initStorage() {
+  useFirestore = isFirebaseConfigured();
+  if (useFirestore) {
+    const db = initFirebase();
+    if (!db) {
+      useFirestore = false;
+    }
+  }
+
+  if (useFirestore) {
+    try {
+      await loadFromFirestore();
+      subscribeToFirestore();
+    } catch (e) {
+      console.error('Firestore init failed', e);
+      dispatchStorageError('Could not connect to cloud storage. Publish Firestore rules and reload.');
+      throw e;
+    }
+  } else {
+    loadCacheFromLocalStorage();
+    ensureLocalDefaults();
+    dispatchStorageError('Firebase not configured — data is local to this browser only');
+  }
+
+  migrateMarginMode();
+  initDone = true;
+}
+
+function ensureLocalDefaults() {
+  if (!safeGet(KEYS.coins, null)) safeSet(KEYS.coins, cache.coins);
+  if (!safeGet(KEYS.positions, null)) safeSet(KEYS.positions, []);
+  if (!safeGet(KEYS.history, null)) safeSet(KEYS.history, []);
+  if (!safeGet(KEYS.settings, null)) safeSet(KEYS.settings, cache.settings);
+  if (safeGet(KEYS.balance, null) === null) safeSet(KEYS.balance, cache.balance);
 }
 
 function migrateMarginMode() {
   let changed = false;
-  const positions = safeGet(KEYS.positions, []);
-  for (const p of positions) {
-    if (p.marginMode === 'Isolated') { p.marginMode = 'Cross'; changed = true; }
+  for (const p of cache.positions) {
+    if (p.marginMode === 'Isolated') {
+      p.marginMode = 'Cross';
+      changed = true;
+    }
   }
-  if (changed) safeSet(KEYS.positions, positions);
-
-  changed = false;
-  const history = safeGet(KEYS.history, []);
-  for (const h of history) {
-    if (h.marginMode === 'Isolated') { h.marginMode = 'Cross'; changed = true; }
+  for (const h of cache.history) {
+    if (h.marginMode === 'Isolated') {
+      h.marginMode = 'Cross';
+      changed = true;
+    }
   }
-  if (changed) safeSet(KEYS.history, history);
+  if (changed) enqueuePersist();
 }
 
 // --- Coins ---
 
 export function getCoins() {
-  return safeGet(KEYS.coins, DEFAULT_COINS);
+  return cache.coins;
 }
 
 export function setCoins(coins) {
-  safeSet(KEYS.coins, coins);
+  cache.coins = coins;
+  enqueuePersist();
 }
 
 export function addCoin(coin) {
@@ -139,31 +357,34 @@ export function getCoinBySymbol(symbol) {
 // --- Settings ---
 
 export function getSettings() {
-  return safeGet(KEYS.settings, DEFAULT_SETTINGS);
+  return cache.settings;
 }
 
 export function setSettings(settings) {
-  safeSet(KEYS.settings, settings);
+  cache.settings = settings;
+  enqueuePersist();
 }
 
 // --- Balance ---
 
 export function getBalance() {
-  return safeGet(KEYS.balance, getSettings().initialBalance);
+  return cache.balance;
 }
 
 export function setBalance(val) {
-  safeSet(KEYS.balance, val);
+  cache.balance = val;
+  enqueuePersist();
 }
 
 // --- Positions ---
 
 export function getPositions() {
-  return safeGet(KEYS.positions, []);
+  return cache.positions;
 }
 
 export function setPositions(positions) {
-  safeSet(KEYS.positions, positions);
+  cache.positions = positions;
+  enqueuePersist();
 }
 
 export function addPosition(position) {
@@ -182,11 +403,12 @@ export function removePosition(id) {
 // --- History ---
 
 export function getHistory() {
-  return safeGet(KEYS.history, []);
+  return cache.history;
 }
 
 export function setHistory(history) {
-  safeSet(KEYS.history, history);
+  cache.history = history;
+  enqueuePersist();
 }
 
 export function addHistory(entry) {
@@ -194,32 +416,52 @@ export function addHistory(entry) {
   entry.historyId = `hist_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   history.unshift(entry);
   if (history.length > 500) history.length = 500;
-  safeSet(KEYS.history, history);
+  setHistory(history);
   return entry;
 }
 
 // --- Selected coin ---
 
 export function getSelectedCoin() {
-  return safeGet(KEYS.selectedCoin, null);
+  return cache.selectedCoin;
 }
 
 export function setSelectedCoin(symbol) {
-  safeSet(KEYS.selectedCoin, symbol);
+  cache.selectedCoin = symbol;
+  enqueuePersist();
 }
 
 // --- Reset ---
 
 export function resetAllData() {
   const settings = getSettings();
-  safeSet(KEYS.positions, []);
-  safeSet(KEYS.history, []);
-  safeSet(KEYS.balance, settings.initialBalance);
+  cache.positions = [];
+  cache.history = [];
+  cache.balance = settings.initialBalance;
+  enqueuePersist();
 }
 
-export function resetEverything() {
+export async function resetEverything() {
+  cache = createDefaultCache();
+  mirrorCacheToLocalStorage();
   Object.values(KEYS).forEach(key => {
     try { localStorage.removeItem(key); } catch { /* noop */ }
   });
-  initStorage();
+  try { localStorage.removeItem(MIGRATED_FLAG); } catch { /* noop */ }
+  mirrorCacheToLocalStorage();
+  if (useFirestore) {
+    await writeToFirestore();
+    safeSet(MIGRATED_FLAG, true);
+  }
+}
+
+/** Push current browser localStorage into Firestore (admin recovery). */
+export async function pushLocalToCloud() {
+  if (!useFirestore) return false;
+  loadCacheFromLocalStorage();
+  migrateMarginMode();
+  mirrorCacheToLocalStorage();
+  const ok = await writeToFirestore();
+  if (ok) safeSet(MIGRATED_FLAG, true);
+  return ok;
 }

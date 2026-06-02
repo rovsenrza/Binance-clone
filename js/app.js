@@ -9,8 +9,23 @@ let historyPeriod = '1d';
 let updateTimer = null;
 let countdownTimer = null;
 
-function init() {
-  storage.initStorage();
+async function init() {
+  try {
+    await storage.initStorage();
+  } catch (e) {
+    console.error(e);
+    ui.showToast('Failed to load saved data', 'error');
+    return;
+  }
+
+  if (storage.isCloudSyncEnabled() && !sessionStorage.getItem('bf_cloud_toast')) {
+    sessionStorage.setItem('bf_cloud_toast', '1');
+    ui.showToast('Connected to cloud storage', 'success');
+  }
+
+  window.addEventListener('storage-remote-update', (e) => {
+    handleCloudUpdate(e.detail);
+  });
 
   const coins = storage.getCoins();
   if (coins.length === 0) {
@@ -19,7 +34,9 @@ function init() {
   }
 
   currentSymbol = storage.getSelectedCoin() || coins[0].symbol;
-  storage.setSelectedCoin(currentSymbol);
+  if (!storage.getSelectedCoin() && currentSymbol) {
+    storage.setSelectedCoin(currentSymbol);
+  }
 
   const symbols = coins.map(c => c.symbol);
   api.startPriceFeed(symbols);
@@ -37,6 +54,27 @@ function init() {
   countdownTimer = setInterval(updateCountdown, 1000);
 
   setTimeout(renderAll, 500);
+}
+
+function handleCloudUpdate(detail = {}) {
+  const coins = storage.getCoins();
+  if (coins.length === 0) return;
+
+  const symbols = coins.map(c => c.symbol);
+  api.updateFeedSymbols(symbols);
+
+  const remoteCoin = storage.getSelectedCoin();
+  if (remoteCoin && symbols.includes(remoteCoin)) {
+    currentSymbol = remoteCoin;
+  } else if (!symbols.includes(currentSymbol)) {
+    currentSymbol = symbols[0];
+  }
+
+  renderAll();
+
+  if (detail.fromRemote) {
+    ui.showToast('Data updated from another device', 'success');
+  }
 }
 
 function onPriceUpdate(symbol) {

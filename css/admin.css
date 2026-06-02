@@ -50,6 +50,25 @@
   border-left-color: var(--color-primary);
 }
 
+.admin-sidebar__storage {
+  margin: var(--space-12) var(--space-16) 0;
+  padding: var(--space-8) var(--space-12);
+  font-size: 11px;
+  line-height: 1.4;
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+}
+
+.admin-sidebar__storage--cloud {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.admin-sidebar__storage--local {
+  background: #fff8e1;
+  color: #6d4c00;
+}
+
 .admin-sidebar__back {
   display: flex;
   align-items: center;

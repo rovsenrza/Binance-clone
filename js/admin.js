@@ -9,13 +9,41 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-function init() {
-  storage.initStorage();
+async function init() {
+  try {
+    await storage.initStorage();
+  } catch (e) {
+    console.error(e);
+    showAlert(document.getElementById('coin-alert'), 'Failed to load saved data.', 'danger');
+    return;
+  }
+
+  window.addEventListener('storage-remote-update', (e) => {
+    renderAll();
+    if (e.detail?.fromRemote) {
+      showAlert(document.getElementById('coin-alert'), 'Updated from another device.', 'success');
+    }
+  });
+
   bindNav();
   bindCoinForm();
   bindSettings();
   bindReset();
+  renderStorageStatus();
   renderAll();
+}
+
+function renderStorageStatus() {
+  const el = document.getElementById('storage-status');
+  if (!el) return;
+  el.hidden = false;
+  if (storage.isCloudSyncEnabled()) {
+    el.textContent = '☁ Live sync — same data on all devices';
+    el.className = 'admin-sidebar__storage admin-sidebar__storage--cloud';
+  } else {
+    el.textContent = '⚠ Cloud off — only this browser';
+    el.className = 'admin-sidebar__storage admin-sidebar__storage--local';
+  }
 }
 
 function renderAll() {
@@ -263,9 +291,9 @@ function bindReset() {
 
   const resetAllBtn = document.getElementById('btn-reset-all');
   if (resetAllBtn) {
-    resetAllBtn.addEventListener('click', () => {
+    resetAllBtn.addEventListener('click', async () => {
       if (!confirm('⚠️ This will delete EVERYTHING including coins and settings. Are you absolutely sure?')) return;
-      storage.resetEverything();
+      await storage.resetEverything();
       renderAll();
       const alertEl = document.getElementById('reset-alert');
       showAlert(alertEl, 'All data including coins and settings has been reset to defaults.', 'success');

@@ -59,6 +59,17 @@ function pnlClass(value) {
   return '';
 }
 
+function indicatorClassFromPnl(pnl, direction) {
+  if (pnl > 0) return 'text-long';
+  if (pnl < 0) return 'text-short';
+  return direction === 'Long' ? 'text-long' : 'text-short';
+}
+
+function formatSizeValue(sizeUsdt, direction, precision = 2) {
+  const formatted = formulas.formatPrice(sizeUsdt, precision);
+  return direction === 'Short' ? `-${formatted}` : formatted;
+}
+
 // --- Toast ---
 
 let toastContainer = null;
@@ -276,15 +287,17 @@ export function renderPositionsTable(positions, prices, settings) {
     const metrics = calcPosMetrics(pos, markPrice, settings, fundingRate, feeRate);
     const coin = storage.getCoinBySymbol(pos.symbol);
     const pricePrecision = coin?.pricePrecision ?? 2;
-    const sizeColor = pos.direction === 'Long' ? 'text-long' : 'text-short';
     const pnlColor = pnlClass(metrics.pnl);
+    const sizeColor = indicatorClassFromPnl(metrics.pnl, pos.direction);
+    const barClass = pos.direction === 'Long'
+      ? 'positions-row__direction-bar--long'
+      : 'positions-row__direction-bar--short';
     const safeId = escapeHtml(pos.id);
     const safeSymbol = escapeHtml(pos.symbol);
     const safeLeverage = escapeHtml(String(pos.leverage));
-
     const markPriceFormatted = formulas.formatPrice(markPrice, pricePrecision);
     const qtyFormatted = formulas.formatQuantity(pos.quantity, coin?.qtyPrecision ?? 3);
-    const barClass = pos.direction === 'Long' ? 'positions-row__direction-bar--long' : 'positions-row__direction-bar--short';
+    const sizeFormatted = formatSizeValue(metrics.currentSizeUsdt, pos.direction, 2);
     const tpVal = pos.tp ? formulas.formatPrice(pos.tp, pricePrecision) : '--';
     const slVal = pos.sl ? formulas.formatPrice(pos.sl, pricePrecision) : '--';
 
@@ -301,7 +314,12 @@ export function renderPositionsTable(positions, prices, settings) {
           </div>
         </div>
       </div>
-      <div class="positions-row__col positions-row__col--size"><span class="positions-table__size ${sizeColor}">${formulas.formatPrice(pos.sizeUsdt, 2)} USDT</span></div>
+      <div class="positions-row__col positions-row__col--size">
+        <div class="positions-table__size ${sizeColor}">
+          <span class="positions-table__size-value ${sizeColor}">${sizeFormatted}</span>
+          <span class="positions-table__size-unit ${sizeColor}">USDT</span>
+        </div>
+      </div>
       <div class="positions-row__col positions-row__col--entry">${formulas.formatPrice(pos.entryPrice, pricePrecision)}</div>
       <div class="positions-row__col positions-row__col--mark">${markPriceFormatted}</div>
       <div class="positions-row__col positions-row__col--pnl">
@@ -315,9 +333,12 @@ export function renderPositionsTable(positions, prices, settings) {
       </div>
       <div class="positions-row__col positions-row__col--liq"><span class="positions-table__liq">${formulas.formatPrice(metrics.liqPrice, 2)}</span></div>
       <div class="positions-row__col positions-row__col--tpsl">
-        <div class="positions-table__tpsl-values">
-          <span>${tpVal}</span>
-          <span>${slVal}</span>
+        <div class="positions-table__tpsl">
+          <div class="positions-table__tpsl-values">
+            <span>${tpVal}</span>
+            <span>${slVal}</span>
+          </div>
+          <img class="positions-table__tpsl-edit" src="assets/icons/edit-text.svg" width="13" height="13" alt="" aria-hidden="true">
         </div>
       </div>
       <div class="positions-row__col positions-row__col--close">
@@ -347,6 +368,7 @@ export function renderPositionsTable(positions, prices, settings) {
 
 function calcPosMetrics(pos, markPrice, settings, fundingRate = 0, feeRate = 0.0004) {
   const posVal = formulas.positionValue(pos.quantity, pos.entryPrice);
+  const currentSizeUsdt = formulas.positionValue(pos.quantity, markPrice);
   const marginVal = formulas.margin(posVal, pos.leverage);
   const pnlVal = formulas.pnl(pos.direction, pos.entryPrice, markPrice, pos.quantity);
   const roiVal = formulas.roi(pnlVal, marginVal);
@@ -362,6 +384,7 @@ function calcPosMetrics(pos, markPrice, settings, fundingRate = 0, feeRate = 0.0
   const estFunding = formulas.funding(posVal, fundingRate);
   return {
     positionValue: posVal,
+    currentSizeUsdt,
     margin: marginVal,
     pnl: pnlVal,
     roi: roiVal,

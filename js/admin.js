@@ -231,11 +231,13 @@ function resetCoinForm() {
 
 function renderSettingsForm() {
   const settings = storage.getSettings();
+  const currentBalInput = document.getElementById('setting-current-balance');
   const balInput = document.getElementById('setting-balance');
   const feeInput = document.getElementById('setting-fee');
   const levInput = document.getElementById('setting-leverage');
   const mmrInput = document.getElementById('setting-mmr');
 
+  if (currentBalInput) currentBalInput.value = storage.getBalance();
   if (balInput) balInput.value = settings.initialBalance;
   if (feeInput) feeInput.value = (settings.feeRate * 100).toFixed(2);
   if (levInput) levInput.value = settings.leverage;
@@ -249,11 +251,16 @@ function bindSettings() {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const alertEl = document.getElementById('settings-alert');
+    const currentBalance = parseFloat(document.getElementById('setting-current-balance')?.value);
     const initialBalance = parseFloat(document.getElementById('setting-balance')?.value);
     const feePercent = parseFloat(document.getElementById('setting-fee')?.value);
     const leverage = parseInt(document.getElementById('setting-leverage')?.value, 10);
     const mmrPercent = parseFloat(document.getElementById('setting-mmr')?.value);
 
+    if (isNaN(currentBalance) || currentBalance < 0) {
+      showAlert(alertEl, 'Current Balance must be >= 0.', 'danger');
+      return;
+    }
     if (isNaN(initialBalance) || initialBalance <= 0) {
       showAlert(alertEl, 'Initial Balance must be > 0.', 'danger');
       return;
@@ -277,6 +284,7 @@ function bindSettings() {
       leverage,
       mmr: mmrPercent / 100,
     });
+    storage.setBalance(currentBalance);
 
     showAlert(alertEl, 'Settings saved successfully.', 'success');
   });

@@ -126,9 +126,14 @@
 
         <form id="settings-form" class="admin-form admin-form--single">
           <div class="admin-form__group">
+            <label class="admin-form__label" for="setting-current-balance">Current Balance (USDT)</label>
+            <input class="admin-form__input" id="setting-current-balance" type="number" step="0.01" min="0" required>
+            <span class="admin-form__hint">Live wallet balance shown on the trading page</span>
+          </div>
+          <div class="admin-form__group">
             <label class="admin-form__label" for="setting-balance">Initial Balance (USDT)</label>
             <input class="admin-form__input" id="setting-balance" type="number" step="0.01" min="1" required>
-            <span class="admin-form__hint">Starting balance for the trading simulation</span>
+            <span class="admin-form__hint">Balance used when resetting trading data</span>
           </div>
           <div class="admin-form__group">
             <label class="admin-form__label" for="setting-fee">Fee Rate (%)</label>

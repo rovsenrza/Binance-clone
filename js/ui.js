@@ -347,6 +347,7 @@ export function renderPositionsTable(positions, prices, settings) {
                 data-close-id="${safeId}"
                 title="Close at market price"
                 style="cursor:pointer">Market</span>
+          <span class="positions-header__sep"></span>
           <span class="positions-table__action-btn positions-table__action-btn--limit">Limit</span>
           <input class="positions-table__action-input"
                  data-close-price="${safeId}"

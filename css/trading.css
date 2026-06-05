@@ -1159,7 +1159,7 @@
   padding-left:  0 !important;
 }
 .positions-table__action-btn--market {
-  border-right: 1px solid rgba(0, 0, 0, 0.5);
+  border-right: 1px solid rgba(20, 20, 20, 0.1);
   padding-right: 6px;
   margin-right: 2px;
   border-radius: 0 !important;

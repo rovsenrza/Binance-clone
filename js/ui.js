@@ -335,7 +335,7 @@ export function renderPositionsTable(positions, prices, settings) {
       <div class="positions-row__col positions-row__col--tpsl">
         <div class="positions-table__tpsl">
           <div class="positions-table__tpsl-values">
-            <span>${tpVal}</span>
+            <span>${tpVal} /</span>
             <span>${slVal}</span>
           </div>
           <img class="positions-table__tpsl-edit" src="assets/icons/edit-text.svg" width="13" height="13" alt="" aria-hidden="true">

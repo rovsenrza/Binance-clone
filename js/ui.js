@@ -289,7 +289,7 @@ export function renderPositionsTable(positions, prices, settings) {
     const coin = storage.getCoinBySymbol(pos.symbol);
     const pricePrecision = coin?.pricePrecision ?? 2;
     const pnlColor = pnlClass(metrics.pnl);
-    const roiColor = pnlClass(metrics.netUnrealized);
+    const roiColor = pnlClass(metrics.pnl);
     const sizeColor = indicatorClassFromPnl(metrics.pnl, pos.direction);
     const barClass = pos.direction === 'Long'
       ? 'positions-row__direction-bar--long'
@@ -379,7 +379,7 @@ function calcPosMetrics(pos, markPrice, settings, fundingRate = 0, feeRate = 0.0
     pos.direction, pos.entryPrice, markPrice, pos.quantity,
     openFeeAmount, feeRate, fundingRate,
   );
-  const roiVal = formulas.roi(netUnrealized, marginVal);
+  const roiVal = formulas.roi(pnlVal, marginVal);
   const liqVal = formulas.liqPrice(pos.direction, pos.entryPrice, pos.leverage, mmr);
   const breakEven = pos.direction === 'Long'
     ? pos.entryPrice + openFeeAmount / pos.quantity

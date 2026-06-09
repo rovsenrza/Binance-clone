@@ -230,7 +230,7 @@ export function getPositionMetrics(position, markPrice, settings, fundingRate = 
     position.direction, position.entryPrice, markPrice, position.quantity,
     openFeeAmount, settings.feeRate, fundingRate,
   );
-  const roiVal = formulas.roi(netUnrealized, marginVal);
+  const roiVal = formulas.roi(pnlVal, marginVal);
   const liqVal = formulas.liqPrice(position.direction, position.entryPrice, position.leverage, storage.getCoinMmr(position.symbol));
 
   return {

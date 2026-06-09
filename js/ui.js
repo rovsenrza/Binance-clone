@@ -330,7 +330,9 @@ export function renderPositionsTable(positions, prices, settings) {
             <span class="positions-table__pnl-value ${pnlColor}">${formulas.formatPnl(metrics.pnl, 2)} USDT</span>
             <span class="positions-table__pnl-roi ${roiColor}">${formulas.formatPercent(metrics.roi, 2)}</span>
           </div>
-          <span class="positions-table__share"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 512 512"><path d="M361.824 344.395c-24.531 0-46.633 10.593-61.972 27.445l-137.973-85.453A83.321 83.321 0 0 0 167.605 256a83.29 83.29 0 0 0-5.726-30.387l137.973-85.457c15.34 16.852 37.441 27.45 61.972 27.45 46.211 0 83.805-37.594 83.805-83.805C445.629 37.59 408.035 0 361.824 0c-46.21 0-83.804 37.594-83.804 83.805a83.403 83.403 0 0 0 5.726 30.386l-137.969 85.454c-15.34-16.852-37.441-27.45-61.972-27.45C37.594 172.195 0 209.793 0 256c0 46.21 37.594 83.805 83.805 83.805 24.53 0 46.633-10.594 61.972-27.45l137.97 85.454a83.408 83.408 0 0 0-5.727 30.39c0 46.207 37.593 83.801 83.804 83.801s83.805-37.594 83.805-83.8c0-46.212-37.594-83.805-83.805-83.805zm-53.246-260.59c0-29.36 23.887-53.246 53.246-53.246s53.246 23.886 53.246 53.246c0 29.36-23.886 53.246-53.246 53.246s-53.246-23.887-53.246-53.246zM83.805 309.246c-29.364 0-53.25-23.887-53.25-53.246s23.886-53.246 53.25-53.246c29.36 0 53.242 23.887 53.242 53.246s-23.883 53.246-53.242 53.246zm224.773 118.95c0-29.36 23.887-53.247 53.246-53.247s53.246 23.887 53.246 53.246c0 29.36-23.886 53.246-53.246 53.246s-53.246-23.886-53.246-53.246z" fill="currentColor"></path></svg></span>
+          <button class="positions-table__share" data-share-position-id="${safeId}" type="button" title="Share" aria-label="Share position">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 512 512"><path d="M361.824 344.395c-24.531 0-46.633 10.593-61.972 27.445l-137.973-85.453A83.321 83.321 0 0 0 167.605 256a83.29 83.29 0 0 0-5.726-30.387l137.973-85.457c15.34 16.852 37.441 27.45 61.972 27.45 46.211 0 83.805-37.594 83.805-83.805C445.629 37.59 408.035 0 361.824 0c-46.21 0-83.804 37.594-83.804 83.805a83.403 83.403 0 0 0 5.726 30.386l-137.969 85.454c-15.34-16.852-37.441-27.45-61.972-27.45C37.594 172.195 0 209.793 0 256c0 46.21 37.594 83.805 83.805 83.805 24.53 0 46.633-10.594 61.972-27.45l137.97 85.454a83.408 83.408 0 0 0-5.727 30.39c0 46.207 37.593 83.801 83.804 83.801s83.805-37.594 83.805-83.8c0-46.212-37.594-83.805-83.805-83.805zm-53.246-260.59c0-29.36 23.887-53.246 53.246-53.246s53.246 23.886 53.246 53.246c0 29.36-23.886 53.246-53.246 53.246s-53.246-23.887-53.246-53.246zM83.805 309.246c-29.364 0-53.25-23.887-53.25-53.246s23.886-53.246 53.25-53.246c29.36 0 53.242 23.887 53.242 53.246s-23.883 53.246-53.242 53.246zm224.773 118.95c0-29.36 23.887-53.247 53.246-53.247s53.246 23.887 53.246 53.246c0 29.36-23.886 53.246-53.246 53.246s-53.246-23.886-53.246-53.246z" fill="currentColor"></path></svg>
+          </button>
         </div>
       </div>
       <div class="positions-row__col positions-row__col--liq"><span class="positions-table__liq">${formulas.formatPrice(metrics.liqPrice, 2)}</span></div>
@@ -598,67 +600,123 @@ export function renderTickerBar(coins, prices) {
     <div class="ticker-bar__set" aria-hidden="true">${itemsHtml}</div>`;
 }
 
-// --- Share Modal ---
+// --- Share Card ---
 
-export function showShareModal(historyItem) {
+const SHARE_USERNAME = 'shortplays';
+const SHARE_REFERRAL_CODE = '1251827823';
+const SHARE_QR_SRC = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https%3A%2F%2Fwww.binance.com';
+const SHARE_FAVICON_SRC = 'https://bin.bnbstatic.com/static/images/common/favicon.ico';
+const SHARE_AVATAR_SRC = 'assets/icons/share-avatar.png';
+const SHARE_LOGO_SRC = 'assets/icons/lightlogo.png';
+
+function formatShareDate() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function buildShareCardHtml({ symbol, direction, leverage, entryPrice, secondPrice, secondPriceLabel, pnl, pricePrecision }) {
+  const pColor = pnl >= 0 ? 'text-long' : 'text-short';
+  const dirClass = direction === 'Long' ? 'share-card__direction--long' : 'share-card__direction--short';
+  const safeSymbol = escapeHtml(symbol);
+  const safeDir = escapeHtml(direction);
+  const safeLeverage = escapeHtml(String(leverage));
+  const safeSecondLabel = escapeHtml(secondPriceLabel);
+
+  return `
+    <img class="share-card__watermark" src="${SHARE_FAVICON_SRC}" alt="" aria-hidden="true">
+    <div class="share-card__header">
+      <img class="share-card__avatar" src="${SHARE_AVATAR_SRC}" alt="" width="36" height="36">
+      <div class="share-card__user">
+        <span class="share-card__username">${SHARE_USERNAME}</span>
+        <span class="share-card__date">${formatShareDate()}</span>
+      </div>
+    </div>
+    <div class="share-card__pair">${safeSymbol} Perpetual</div>
+    <div class="share-card__meta">
+      <span class="share-card__direction ${dirClass}">${safeDir}</span>
+      <span class="share-card__leverage"> | ${safeLeverage}x</span>
+    </div>
+    <div class="share-card__pnl">
+      <span class="share-card__pnl-value ${pColor}">${formulas.formatPnl(pnl, 2)}</span>
+      <span class="share-card__pnl-unit">USDT</span>
+    </div>
+    <div class="share-card__prices">
+      <div class="share-card__price-col">
+        <span class="share-card__price-label">Entry Price</span>
+        <span class="share-card__price-value">${formulas.formatPrice(entryPrice, pricePrecision)}</span>
+      </div>
+      <div class="share-card__price-col">
+        <span class="share-card__price-label">${safeSecondLabel}</span>
+        <span class="share-card__price-value">${formulas.formatPrice(secondPrice, pricePrecision)}</span>
+      </div>
+    </div>
+    <div class="share-card__footer">
+      <div class="share-card__brand">
+        <img class="share-card__logo-img" src="${SHARE_LOGO_SRC}" alt="Binance Futures" width="120" height="32">
+        <span class="share-card__referral">Referral code ${SHARE_REFERRAL_CODE}</span>
+      </div>
+      <div class="share-card__qr">
+        <img src="${SHARE_QR_SRC}" width="64" height="64" alt="Binance QR code">
+      </div>
+    </div>`;
+}
+
+function openShareOverlay(html) {
   const overlay = el('share-modal');
-  if (!overlay) return;
+  const body = el('share-card-body');
+  if (!overlay || !body) return;
 
-  const h = historyItem;
-  const pColor = h.realizedPnl >= 0 ? 'text-long' : 'text-short';
-  const dirClass = h.direction === 'Long' ? 'history-table__direction--long' : 'history-table__direction--short';
-  const coin = storage.getCoinBySymbol(h.symbol);
-  const pricePrecision = coin?.pricePrecision ?? 2;
-  const safeSymbol = escapeHtml(h.symbol);
-  const safeMode = escapeHtml(h.marginMode);
-  const safeDir = escapeHtml(h.direction);
-
-  const body = qs('.modal__body', overlay);
-  if (body) {
-    body.innerHTML = `
-      <div class="share-modal__content">
-        <div class="share-modal__pair">${safeSymbol}</div>
-        <span class="share-modal__direction ${dirClass}">${safeMode} ${safeDir} ${escapeHtml(h.leverage)}x</span>
-        <div class="share-modal__pnl ${pColor}">${formulas.formatPnl(h.realizedPnl, 4)} USDT</div>
-        <div class="share-modal__roi ${pColor}">${formulas.formatPercent(h.roiPercent, 2)}</div>
-        <div class="share-modal__grid">
-          <div class="share-modal__field">
-            <span class="share-modal__field-label">Entry Price</span>
-            <span class="share-modal__field-value">${formulas.formatPrice(h.entryPrice, pricePrecision)}</span>
-          </div>
-          <div class="share-modal__field">
-            <span class="share-modal__field-label">Close Price</span>
-            <span class="share-modal__field-value">${formulas.formatPrice(h.closePrice, pricePrecision)}</span>
-          </div>
-          <div class="share-modal__field">
-            <span class="share-modal__field-label">Leverage</span>
-            <span class="share-modal__field-value">${escapeHtml(h.leverage)}x</span>
-          </div>
-          <div class="share-modal__field">
-            <span class="share-modal__field-label">Direction</span>
-            <span class="share-modal__field-value">${safeDir}</span>
-          </div>
-          <div class="share-modal__field">
-            <span class="share-modal__field-label">Open Time</span>
-            <span class="share-modal__field-value">${formatTime(h.openTime)}</span>
-          </div>
-          <div class="share-modal__field">
-            <span class="share-modal__field-label">Close Time</span>
-            <span class="share-modal__field-value">${formatTime(h.closeTime)}</span>
-          </div>
-        </div>
-      </div>`;
-  }
+  body.innerHTML = html;
 
   const previousFocus = document.activeElement;
   overlay.removeAttribute('hidden');
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
-  const closeBtn = qs('.modal__close', overlay);
+  const closeBtn = qs('.share-overlay__close', overlay);
   if (closeBtn) closeBtn.focus();
   overlay._previousFocus = previousFocus;
   overlay._trapHandler = trapFocus.bind(null, overlay);
   overlay.addEventListener('keydown', overlay._trapHandler);
+}
+
+export function showShareModalForHistory(historyItem) {
+  const coin = storage.getCoinBySymbol(historyItem.symbol);
+  const pricePrecision = coin?.pricePrecision ?? 2;
+  openShareOverlay(buildShareCardHtml({
+    symbol: historyItem.symbol,
+    direction: historyItem.direction,
+    leverage: historyItem.leverage,
+    entryPrice: historyItem.entryPrice,
+    secondPrice: historyItem.closePrice,
+    secondPriceLabel: 'Exit Price',
+    pnl: historyItem.realizedPnl,
+    pricePrecision,
+  }));
+}
+
+export function showShareModalForPosition(position, markPrice, settings) {
+  const coin = storage.getCoinBySymbol(position.symbol);
+  const pricePrecision = coin?.pricePrecision ?? 2;
+  const feeRate = settings.feeRate ?? 0.0004;
+  const fundingRate = getTickerData(position.symbol)?.fundingRate ?? position.fundingRate ?? 0;
+  const mmr = storage.getCoinMmr(position.symbol);
+  const metrics = calcPosMetrics(position, markPrice, settings, fundingRate, feeRate, mmr);
+
+  openShareOverlay(buildShareCardHtml({
+    symbol: position.symbol,
+    direction: position.direction,
+    leverage: position.leverage,
+    entryPrice: position.entryPrice,
+    secondPrice: markPrice,
+    secondPriceLabel: 'Last Price',
+    pnl: metrics.pnl,
+    pricePrecision,
+  }));
+}
+
+export function showShareModal(historyItem) {
+  showShareModalForHistory(historyItem);
 }
 
 function trapFocus(container, e) {

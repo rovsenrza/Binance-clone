@@ -249,10 +249,24 @@ function bindEvents() {
     });
   });
 
-  // Position close buttons (delegated)
+  // Position actions (delegated)
   const tbody = document.getElementById('positions-tbody');
   if (tbody) {
     tbody.addEventListener('click', (e) => {
+      const shareBtn = e.target.closest('[data-share-position-id]');
+      if (shareBtn) {
+        const posId = shareBtn.dataset.sharePositionId;
+        const pos = storage.getPositions().find(p => p.id === posId);
+        if (!pos) return;
+        const mp = api.getMarkPrice(pos.symbol);
+        if (!mp) {
+          ui.showToast('Price not available for ' + pos.symbol, 'error');
+          return;
+        }
+        ui.showShareModalForPosition(pos, mp, storage.getSettings());
+        return;
+      }
+
       const closeBtn = e.target.closest('[data-close-id]');
       if (closeBtn) {
         const posId = closeBtn.dataset.closeId;
@@ -288,7 +302,7 @@ function bindEvents() {
   const shareModal = document.getElementById('share-modal');
   if (shareModal) {
     shareModal.addEventListener('click', (e) => {
-      if (e.target === shareModal || e.target.closest('.modal__close')) {
+      if (e.target === shareModal || e.target.closest('.share-overlay__close')) {
         ui.hideShareModal();
       }
     });

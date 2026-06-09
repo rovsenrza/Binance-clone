@@ -122,11 +122,7 @@ function renderPairAndAccount() {
   ui.renderPairBlock(currentSymbol);
 
   const prices = api.getPriceData();
-  const markPrices = {};
-  for (const [sym, data] of Object.entries(prices)) {
-    markPrices[sym] = data.markPrice || 0;
-  }
-  const accountState = trading.calculateAccountState(markPrices);
+  const accountState = trading.calculateAccountState(prices);
   ui.renderAccountBlock(accountState);
   ui.renderAvailableBalance(accountState.availableBalance);
 }
@@ -155,7 +151,7 @@ function updateCalcFields() {
   const size = sizeInput ? parseFloat(sizeInput.value) : 0;
   const markPrice = api.getMarkPrice(currentSymbol);
   const settings = storage.getSettings();
-  ui.renderCalcFields(size, markPrice, settings);
+  ui.renderCalcFields(size, markPrice, settings, currentSymbol);
 }
 
 function updateDateRange() {

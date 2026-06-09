@@ -133,7 +133,7 @@ export function renderPairBlock(symbol, selectedCoin) {
     priceEl.className = `pair-block__price ${colorClass}`;
   }
 
-  document.title = `${formulas.formatPrice(price, precision)} | ${symbol} Perp`;
+  document.title = `${formulas.formatPrice(price, precision)} | ${symbol} USDⓈ-M`;
 
   if (changeEl) {
     const absChange = formulas.formatPrice(data.priceChange ?? 0, 1);
@@ -214,7 +214,7 @@ export function renderAvailableBalance(avbl) {
 
 // --- Calculated Fields ---
 
-export function renderCalcFields(size, markPrice, settings, direction) {
+export function renderCalcFields(size, markPrice, settings, symbol) {
   const liqLongEl = el('calc-liq-long');
   const liqShortEl = el('calc-liq-short');
   const costLongEl = el('calc-cost-long');
@@ -234,7 +234,7 @@ export function renderCalcFields(size, markPrice, settings, direction) {
     return;
   }
 
-  const mmr = settings.mmr;
+  const mmr = symbol ? storage.getCoinMmr(symbol) : 0.005;
   const posValue = size;
   const marginVal = formulas.margin(posValue, leverage);
   const feeVal = formulas.openFee(posValue, settings.feeRate);
@@ -284,10 +284,12 @@ export function renderPositionsTable(positions, prices, settings) {
   const rows = positions.map(pos => {
     const markPrice = prices[pos.symbol]?.markPrice || pos.entryPrice;
     const fundingRate = prices[pos.symbol]?.fundingRate ?? pos.fundingRate ?? 0;
-    const metrics = calcPosMetrics(pos, markPrice, settings, fundingRate, feeRate);
+    const mmr = storage.getCoinMmr(pos.symbol);
+    const metrics = calcPosMetrics(pos, markPrice, settings, fundingRate, feeRate, mmr);
     const coin = storage.getCoinBySymbol(pos.symbol);
     const pricePrecision = coin?.pricePrecision ?? 2;
     const pnlColor = pnlClass(metrics.pnl);
+    const roiColor = pnlClass(metrics.netUnrealized);
     const sizeColor = indicatorClassFromPnl(metrics.pnl, pos.direction);
     const barClass = pos.direction === 'Long'
       ? 'positions-row__direction-bar--long'
@@ -326,7 +328,7 @@ export function renderPositionsTable(positions, prices, settings) {
         <div class="positions-table__pnl-wrap">
           <div class="positions-table__pnl">
             <span class="positions-table__pnl-value ${pnlColor}">${formulas.formatPnl(metrics.pnl, 2)} USDT</span>
-            <span class="positions-table__pnl-roi ${pnlColor}">${formulas.formatPercent(metrics.roi, 2)}</span>
+            <span class="positions-table__pnl-roi ${roiColor}">${formulas.formatPercent(metrics.roi, 2)}</span>
           </div>
           <span class="positions-table__share"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 512 512"><path d="M361.824 344.395c-24.531 0-46.633 10.593-61.972 27.445l-137.973-85.453A83.321 83.321 0 0 0 167.605 256a83.29 83.29 0 0 0-5.726-30.387l137.973-85.457c15.34 16.852 37.441 27.45 61.972 27.45 46.211 0 83.805-37.594 83.805-83.805C445.629 37.59 408.035 0 361.824 0c-46.21 0-83.804 37.594-83.804 83.805a83.403 83.403 0 0 0 5.726 30.386l-137.969 85.454c-15.34-16.852-37.441-27.45-61.972-27.45C37.594 172.195 0 209.793 0 256c0 46.21 37.594 83.805 83.805 83.805 24.53 0 46.633-10.594 61.972-27.45l137.97 85.454a83.408 83.408 0 0 0-5.727 30.39c0 46.207 37.593 83.801 83.804 83.801s83.805-37.594 83.805-83.8c0-46.212-37.594-83.805-83.805-83.805zm-53.246-260.59c0-29.36 23.887-53.246 53.246-53.246s53.246 23.886 53.246 53.246c0 29.36-23.886 53.246-53.246 53.246s-53.246-23.887-53.246-53.246zM83.805 309.246c-29.364 0-53.25-23.887-53.25-53.246s23.886-53.246 53.25-53.246c29.36 0 53.242 23.887 53.242 53.246s-23.883 53.246-53.242 53.246zm224.773 118.95c0-29.36 23.887-53.247 53.246-53.247s53.246 23.887 53.246 53.246c0 29.36-23.886 53.246-53.246 53.246s-53.246-23.886-53.246-53.246z" fill="currentColor"></path></svg></span>
         </div>
@@ -367,18 +369,22 @@ export function renderPositionsTable(positions, prices, settings) {
   container.innerHTML = rows.join('');
 }
 
-function calcPosMetrics(pos, markPrice, settings, fundingRate = 0, feeRate = 0.0004) {
+function calcPosMetrics(pos, markPrice, settings, fundingRate = 0, feeRate = 0.0004, mmr = 0.005) {
   const posVal = formulas.positionValue(pos.quantity, pos.entryPrice);
   const currentSizeUsdt = formulas.positionValue(pos.quantity, markPrice);
   const marginVal = formulas.margin(posVal, pos.leverage);
   const pnlVal = formulas.pnl(pos.direction, pos.entryPrice, markPrice, pos.quantity);
-  const roiVal = formulas.roi(pnlVal, marginVal);
-  const liqVal = formulas.liqPrice(pos.direction, pos.entryPrice, pos.leverage, settings.mmr);
-  const openFee = formulas.openFee(posVal, feeRate);
+  const openFeeAmount = pos.openFee ?? formulas.openFee(posVal, feeRate);
+  const netUnrealized = formulas.netUnrealizedPnl(
+    pos.direction, pos.entryPrice, markPrice, pos.quantity,
+    openFeeAmount, feeRate, fundingRate,
+  );
+  const roiVal = formulas.roi(netUnrealized, marginVal);
+  const liqVal = formulas.liqPrice(pos.direction, pos.entryPrice, pos.leverage, mmr);
   const breakEven = pos.direction === 'Long'
-    ? pos.entryPrice + openFee / pos.quantity
-    : pos.entryPrice - openFee / pos.quantity;
-  const maintMargin = posVal * (settings.mmr ?? 0.005);
+    ? pos.entryPrice + openFeeAmount / pos.quantity
+    : pos.entryPrice - openFeeAmount / pos.quantity;
+  const maintMargin = posVal * mmr;
   const marginRatio = marginVal > 0
     ? `${((maintMargin / marginVal) * 100).toFixed(2)}%`
     : '--';
@@ -388,6 +394,7 @@ function calcPosMetrics(pos, markPrice, settings, fundingRate = 0, feeRate = 0.0
     currentSizeUsdt,
     margin: marginVal,
     pnl: pnlVal,
+    netUnrealized,
     roi: roiVal,
     liqPrice: liqVal,
     breakEven,
@@ -524,34 +531,71 @@ export function renderCoinDropdown(coins, currentSymbol) {
 
 // --- Bottom Ticker ---
 
+const TICKER_WIFI_SVG = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12.01 21.49a1.49 1.49 0 0 1-1.49-1.49v-2.5a1.49 1.49 0 1 1 2.98 0v2.5a1.49 1.49 0 0 1-1.49 1.49zm6.67-3.6a1.49 1.49 0 0 1-2.1 0 8.38 8.38 0 0 0-11.16 0 1.49 1.49 0 0 1-2.1-2.12 11.36 11.36 0 0 1 15.36 0 1.49 1.49 0 0 1 0 2.12zm3.54-4.24a1.49 1.49 0 0 1-2.1 0 13.36 13.36 0 0 0-17.24 0 1.49 1.49 0 0 1-2.1-2.12 16.34 16.34 0 0 1 21.44 0 1.49 1.49 0 0 1 0 2.12zM1.78 8.05a1.49 1.49 0 0 1 0-2.12 18.32 18.32 0 0 1 20.44 0 1.49 1.49 0 0 1-2.12 2.12 15.34 15.34 0 0 0-16.2 0 1.49 1.49 0 0 1-2.12 0z"/></svg>`;
+
+function buildTickerItemHtml(coin, data) {
+  const pct = data.priceChangePercent ?? 0;
+  const colorClass = pct >= 0 ? 'text-long' : 'text-short';
+  const price = formulas.formatPrice(data.markPrice || data.lastPrice || 0, coin.pricePrecision ?? 1);
+  const baseAsset = coin.baseAsset || coin.symbol.replace('USDT', '');
+  const safeSymbol = escapeHtml(coin.symbol);
+  return `<div class="ticker-bar__item" data-ticker-symbol="${safeSymbol}">
+    <span class="ticker-bar__coin">${coinIconHtml(baseAsset, 14)}</span>
+    <span class="ticker-bar__symbol">${safeSymbol}</span>
+    <span class="ticker-bar__change ${colorClass}">${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</span>
+    <span class="ticker-bar__price">${price}</span>
+  </div>`;
+}
+
+function updateTickerConnection(status) {
+  const iconEl = document.querySelector('.ticker-bar__connection-icon');
+  const textEl = el('ticker-connection-text');
+  const connected = status === 'connected';
+  if (iconEl) {
+    iconEl.classList.toggle('ticker-bar__connection-icon--error', !connected);
+    iconEl.innerHTML = TICKER_WIFI_SVG;
+  }
+  if (textEl) {
+    textEl.textContent = connected
+      ? 'Stable connection'
+      : (status === 'reconnecting' ? 'Reconnecting...' : 'Connecting...');
+  }
+}
+
 export function renderTickerBar(coins, prices) {
-  const container = el('ticker-items');
-  if (!container) return;
+  const track = el('ticker-track');
+  if (!track) return;
 
   const status = getConnectionStatus();
-  const statusDot = status === 'connected' ? 'ticker-bar__connection-dot' : 'ticker-bar__connection-dot ticker-bar__connection-dot--error';
-  const statusText = status === 'connected' ? 'Stable connection' : (status === 'reconnecting' ? 'Reconnecting...' : 'Connecting...');
+  updateTickerConnection(status);
 
-  let html = `<div class="ticker-bar__connection">
-    <span class="${statusDot}"></span> ${statusText}
-  </div>`;
+  const activeCoins = coins.filter(coin => prices[coin.symbol]);
+  const itemsHtml = activeCoins.map(coin => buildTickerItemHtml(coin, prices[coin.symbol])).join('');
+  const coinKey = activeCoins.map(c => c.symbol).join(',');
 
-  coins.forEach(coin => {
-    const data = prices[coin.symbol];
-    if (!data) return;
-    const pct = data.priceChangePercent ?? 0;
-    const colorClass = pct >= 0 ? 'text-long' : 'text-short';
-    const price = formulas.formatPrice(data.markPrice || data.lastPrice || 0, coin.pricePrecision ?? 1);
-    const baseAsset = coin.baseAsset || coin.symbol.replace('USDT', '');
-    html += `<div class="ticker-bar__item">
-      <span class="ticker-bar__coin" style="width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center">${coinIconHtml(baseAsset, 14)}</span>
-      <span class="ticker-bar__symbol">${escapeHtml(coin.symbol)}</span>
-      <span class="ticker-bar__change ${colorClass}">${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</span>
-      <span class="ticker-bar__price">${price}</span>
-    </div>`;
-  });
+  if (track.dataset.coinKey === coinKey && track.querySelector('.ticker-bar__set')) {
+    activeCoins.forEach(coin => {
+      const data = prices[coin.symbol];
+      const pct = data.priceChangePercent ?? 0;
+      const colorClass = pct >= 0 ? 'text-long' : 'text-short';
+      const price = formulas.formatPrice(data.markPrice || data.lastPrice || 0, coin.pricePrecision ?? 1);
+      track.querySelectorAll(`[data-ticker-symbol="${coin.symbol}"]`).forEach(item => {
+        const changeEl = item.querySelector('.ticker-bar__change');
+        const priceEl = item.querySelector('.ticker-bar__price');
+        if (changeEl) {
+          changeEl.className = `ticker-bar__change ${colorClass}`;
+          changeEl.textContent = `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+        }
+        if (priceEl) priceEl.textContent = price;
+      });
+    });
+    return;
+  }
 
-  container.innerHTML = html;
+  track.dataset.coinKey = coinKey;
+  track.innerHTML = `
+    <div class="ticker-bar__set">${itemsHtml}</div>
+    <div class="ticker-bar__set" aria-hidden="true">${itemsHtml}</div>`;
 }
 
 // --- Share Modal ---

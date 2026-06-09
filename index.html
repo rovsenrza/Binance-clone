@@ -4,10 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=1920" />
     <meta name="color-scheme" content="light only" />
-    <title>75,770.1 | BTCUSDT Perp</title>
+    <title>75,770.1 | BTCUSDT USDⓈ-M</title>
+    <link rel="icon" href="https://bin.bnbstatic.com/static/images/common/favicon.ico" />
     <link rel="stylesheet" href="css/styles.css" />
     <link rel="stylesheet" href="css/trading.css" />
-    <link rel="icon" href="favicon.ico" />
   </head>
   <body>
     <!-- ===== HEADER ===== -->
@@ -941,17 +941,23 @@
     </div>
 
     <!-- ===== BOTTOM TICKER ===== -->
-    <div class="ticker-bar" id="ticker-items">
-      <div class="ticker-bar__connection">
-        <span
-          class="ticker-bar__connection-dot ticker-bar__connection-dot--error"
-        ></span>
-        Connecting...
+    <div class="ticker-bar">
+      <div class="ticker-bar__connection" id="ticker-connection">
+        <span class="ticker-bar__connection-icon ticker-bar__connection-icon--error" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12.01 21.49a1.49 1.49 0 0 1-1.49-1.49v-2.5a1.49 1.49 0 1 1 2.98 0v2.5a1.49 1.49 0 0 1-1.49 1.49zm6.67-3.6a1.49 1.49 0 0 1-2.1 0 8.38 8.38 0 0 0-11.16 0 1.49 1.49 0 0 1-2.1-2.12 11.36 11.36 0 0 1 15.36 0 1.49 1.49 0 0 1 0 2.12zm3.54-4.24a1.49 1.49 0 0 1-2.1 0 13.36 13.36 0 0 0-17.24 0 1.49 1.49 0 0 1-2.1-2.12 16.34 16.34 0 0 1 21.44 0 1.49 1.49 0 0 1 0 2.12zM1.78 8.05a1.49 1.49 0 0 1 0-2.12 18.32 18.32 0 0 1 20.44 0 1.49 1.49 0 0 1-2.12 2.12 15.34 15.34 0 0 0-16.2 0 1.49 1.49 0 0 1-2.12 0z"/>
+          </svg>
+        </span>
+        <span id="ticker-connection-text">Connecting...</span>
       </div>
-    </div>
-    <div class="ticker-bar__right-links">
-      <a href="#" class="ticker-bar__link">Disclaimer</a>
-      <a href="#" class="ticker-bar__link">Cookie Preferences</a>
+      <div class="ticker-bar__scroll">
+        <div class="ticker-bar__track" id="ticker-track"></div>
+      </div>
+      <span class="ticker-bar__sep">|</span>
+      <div class="ticker-bar__right-links">
+        <a href="#" class="ticker-bar__link">Disclaimer</a>
+        <a href="#" class="ticker-bar__link">Cookie Preferences</a>
+      </div>
     </div>
 
     <!-- ===== SHARE MODAL ===== -->

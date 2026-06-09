@@ -35,11 +35,36 @@ export function realizedPnl(pnlAtClose, openFee, closeFee, fundingCost) {
   return pnlAtClose - openFee - closeFee - fundingCost;
 }
 
+export function netUnrealizedPnl(direction, entryPrice, markPrice, quantity, openFee, feeRate, fundingRate) {
+  const rawPnl = pnl(direction, entryPrice, markPrice, quantity);
+  const closeFeeAmount = closeFee(markPrice, quantity, feeRate);
+  const posValue = positionValue(quantity, entryPrice);
+  const fundingCost = funding(posValue, fundingRate);
+  return rawPnl - openFee - closeFeeAmount - fundingCost;
+}
 
-export function unrealizedPnl(positions, prices) {
+function resolveMarkPrice(priceData, fallback) {
+  if (priceData == null) return fallback;
+  if (typeof priceData === 'object') return priceData.markPrice ?? fallback;
+  return priceData;
+}
+
+function resolveFundingRate(priceData, fallback = 0) {
+  if (priceData == null || typeof priceData !== 'object') return fallback;
+  return priceData.fundingRate ?? fallback;
+}
+
+export function unrealizedPnl(positions, prices, feeRate = 0.0004) {
   return positions.reduce((sum, pos) => {
-    const mark = prices[pos.symbol] || pos.entryPrice;
-    return sum + pnl(pos.direction, pos.entryPrice, mark, pos.quantity);
+    const priceData = prices[pos.symbol];
+    const mark = resolveMarkPrice(priceData, pos.entryPrice);
+    const fundingRate = resolveFundingRate(priceData, pos.fundingRate ?? 0);
+    const posValue = positionValue(pos.quantity, pos.entryPrice);
+    const openFeeAmount = pos.openFee ?? openFee(posValue, feeRate);
+    return sum + netUnrealizedPnl(
+      pos.direction, pos.entryPrice, mark, pos.quantity,
+      openFeeAmount, feeRate, fundingRate,
+    );
   }, 0);
 }
 

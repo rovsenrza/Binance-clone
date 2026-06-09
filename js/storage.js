@@ -29,6 +29,7 @@ const DEFAULT_COINS = [
     apiSymbol: 'BTCUSDT',
     pricePrecision: 1,
     qtyPrecision: 3,
+    mmr: 0.005,
   },
   {
     id: 'bnbusdt',
@@ -39,14 +40,16 @@ const DEFAULT_COINS = [
     apiSymbol: 'BNBUSDT',
     pricePrecision: 2,
     qtyPrecision: 2,
+    mmr: 0.005,
   },
 ];
+
+const DEFAULT_MMR = 0.005;
 
 const DEFAULT_SETTINGS = {
   initialBalance: 100,
   feeRate: 0.0004,
   leverage: 10,
-  mmr: 0.005,
 };
 
 const MIGRATED_FLAG = `${PREFIX}firestore_migrated`;
@@ -288,6 +291,7 @@ export async function initStorage() {
   }
 
   migrateMarginMode();
+  migrateCoinMmr();
   initDone = true;
 }
 
@@ -312,6 +316,23 @@ function migrateMarginMode() {
       h.marginMode = 'Cross';
       changed = true;
     }
+  }
+  if (changed) enqueuePersist();
+}
+
+function migrateCoinMmr() {
+  const fallbackMmr = cache.settings?.mmr ?? DEFAULT_MMR;
+  let changed = false;
+  for (const coin of cache.coins) {
+    if (coin.mmr == null || isNaN(coin.mmr)) {
+      coin.mmr = fallbackMmr;
+      changed = true;
+    }
+  }
+  if (cache.settings?.mmr !== undefined) {
+    const { mmr, ...rest } = cache.settings;
+    cache.settings = rest;
+    changed = true;
   }
   if (changed) enqueuePersist();
 }
@@ -352,6 +373,11 @@ export function deleteCoin(id) {
 
 export function getCoinBySymbol(symbol) {
   return getCoins().find(c => c.symbol === symbol) || null;
+}
+
+export function getCoinMmr(symbol) {
+  const coin = getCoinBySymbol(symbol);
+  return coin?.mmr ?? DEFAULT_MMR;
 }
 
 // --- Settings ---

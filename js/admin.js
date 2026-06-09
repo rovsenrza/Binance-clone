@@ -81,7 +81,7 @@ function renderCoinsTable() {
   if (!tbody) return;
 
   if (coins.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="admin-empty">No coins configured. Add one above.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="admin-empty">No coins configured. Add one above.</td></tr>`;
     return;
   }
 
@@ -94,6 +94,7 @@ function renderCoinsTable() {
       <td>${escapeHtml(coin.apiSymbol || coin.symbol)}</td>
       <td>${coin.pricePrecision ?? 2}</td>
       <td>${coin.qtyPrecision ?? 3}</td>
+      <td>${((coin.mmr ?? 0.005) * 100).toFixed(2)}</td>
       <td>
         <div class="admin-table__actions">
           <button class="admin-btn admin-btn--secondary admin-btn--sm" data-edit="${escapeHtml(coin.id)}">Edit</button>
@@ -137,6 +138,7 @@ function saveCoin() {
   const apiSymbol = document.getElementById('coin-api')?.value?.trim().toUpperCase() || symbol;
   const pricePrecision = parseInt(document.getElementById('coin-price-precision')?.value, 10);
   const qtyPrecision = parseInt(document.getElementById('coin-qty-precision')?.value, 10);
+  const mmrPercent = parseFloat(document.getElementById('coin-mmr')?.value);
   const alertEl = document.getElementById('coin-alert');
 
   if (!symbol || !baseAsset) {
@@ -156,10 +158,15 @@ function saveCoin() {
 
   const resolvedPricePrecision = isNaN(pricePrecision) ? 2 : Math.max(0, Math.min(8, pricePrecision));
   const resolvedQtyPrecision = isNaN(qtyPrecision) ? 3 : Math.max(0, Math.min(8, qtyPrecision));
+  if (isNaN(mmrPercent) || mmrPercent < 0 || mmrPercent > 50) {
+    showAlert(alertEl, 'MMR must be 0–50%.', 'danger');
+    return;
+  }
+  const resolvedMmr = mmrPercent / 100;
   const coins = storage.getCoins();
 
   if (editingCoinId) {
-    storage.updateCoin(editingCoinId, { symbol, baseAsset, quoteAsset, displayName, apiSymbol, pricePrecision: resolvedPricePrecision, qtyPrecision: resolvedQtyPrecision });
+    storage.updateCoin(editingCoinId, { symbol, baseAsset, quoteAsset, displayName, apiSymbol, pricePrecision: resolvedPricePrecision, qtyPrecision: resolvedQtyPrecision, mmr: resolvedMmr });
     showAlert(alertEl, `${symbol} updated successfully.`, 'success');
   } else {
     const exists = coins.find(c => c.symbol === symbol);
@@ -173,6 +180,7 @@ function saveCoin() {
       apiSymbol,
       pricePrecision: resolvedPricePrecision,
       qtyPrecision: resolvedQtyPrecision,
+      mmr: resolvedMmr,
     });
     showAlert(alertEl, `${symbol} added successfully.`, 'success');
   }
@@ -194,6 +202,7 @@ function editCoin(id) {
   document.getElementById('coin-api').value = coin.apiSymbol || coin.symbol;
   document.getElementById('coin-price-precision').value = coin.pricePrecision ?? 2;
   document.getElementById('coin-qty-precision').value = coin.qtyPrecision ?? 3;
+  document.getElementById('coin-mmr').value = ((coin.mmr ?? 0.005) * 100).toFixed(2);
 
   const submitBtn = document.getElementById('coin-submit');
   if (submitBtn) submitBtn.textContent = 'Update Coin';
@@ -235,13 +244,11 @@ function renderSettingsForm() {
   const balInput = document.getElementById('setting-balance');
   const feeInput = document.getElementById('setting-fee');
   const levInput = document.getElementById('setting-leverage');
-  const mmrInput = document.getElementById('setting-mmr');
 
   if (currentBalInput) currentBalInput.value = storage.getBalance();
   if (balInput) balInput.value = settings.initialBalance;
   if (feeInput) feeInput.value = (settings.feeRate * 100).toFixed(2);
   if (levInput) levInput.value = settings.leverage;
-  if (mmrInput) mmrInput.value = (settings.mmr * 100).toFixed(2);
 }
 
 function bindSettings() {
@@ -255,7 +262,6 @@ function bindSettings() {
     const initialBalance = parseFloat(document.getElementById('setting-balance')?.value);
     const feePercent = parseFloat(document.getElementById('setting-fee')?.value);
     const leverage = parseInt(document.getElementById('setting-leverage')?.value, 10);
-    const mmrPercent = parseFloat(document.getElementById('setting-mmr')?.value);
 
     if (isNaN(currentBalance) || currentBalance < 0) {
       showAlert(alertEl, 'Current Balance must be >= 0.', 'danger');
@@ -273,16 +279,10 @@ function bindSettings() {
       showAlert(alertEl, 'Leverage must be >= 1.', 'danger');
       return;
     }
-    if (isNaN(mmrPercent) || mmrPercent < 0 || mmrPercent > 50) {
-      showAlert(alertEl, 'MMR must be 0–50%.', 'danger');
-      return;
-    }
-
     storage.setSettings({
       initialBalance,
       feeRate: feePercent / 100,
       leverage,
-      mmr: mmrPercent / 100,
     });
     storage.setBalance(currentBalance);
 

@@ -353,7 +353,37 @@ table {
   padding: 0 var(--space-16);
   z-index: 100;
   overflow: hidden;
+  gap: 12px;
+}
+
+.ticker-bar__scroll {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+}
+
+.ticker-bar__track {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll 40s linear infinite;
+}
+
+.ticker-bar__track:hover {
+  animation-play-state: paused;
+}
+
+.ticker-bar__set {
+  display: flex;
+  align-items: center;
   gap: 24px;
+  flex-shrink: 0;
+  padding-right: 24px;
+}
+
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 .ticker-bar__item {
@@ -362,6 +392,15 @@ table {
   gap: var(--space-8);
   white-space: nowrap;
   font-size: var(--font-size-xs);
+  flex-shrink: 0;
+}
+
+.ticker-bar__coin {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
@@ -382,19 +421,27 @@ table {
   font-size: var(--font-size-xs);
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
-.ticker-bar__connection-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-long);
-  display: inline-block;
+.ticker-bar__connection-icon {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+  color: var(--color-long);
 }
 
-.ticker-bar__connection-dot--error {
-  background: var(--color-short);
+.ticker-bar__connection-icon--error {
+  color: var(--color-short);
+}
+
+.ticker-bar__sep {
+  color: #EAECEF;
+  font-size: 12px;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 /* === UTILITY CLASSES === */
@@ -499,14 +546,10 @@ table {
 
 /* === TICKER RIGHT LINKS === */
 .ticker-bar__right-links {
-  position: fixed;
-  bottom: 0;
-  right: 16px;
-  height: 24px;
   display: flex;
   align-items: center;
   gap: 16px;
-  z-index: 101;
+  flex-shrink: 0;
 }
 
 .ticker-bar__link {

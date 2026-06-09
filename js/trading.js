@@ -22,7 +22,6 @@ export function openPosition({ symbol, direction, sizeUsdt, tp, sl }) {
 
   const leverage = settings.leverage;
   const feeRate = settings.feeRate;
-  const mmr = settings.mmr;
   const positions = storage.getPositions();
   const currentBalance = storage.getBalance();
   const avbl = formulas.availableBalance(currentBalance, positions, leverage);
@@ -139,7 +138,7 @@ export function checkTpSl(prices) {
     const markPrice = prices[pos.symbol]?.markPrice;
     if (!markPrice) continue;
 
-    const liqVal = formulas.liqPrice(pos.direction, pos.entryPrice, pos.leverage, settings.mmr);
+    const liqVal = formulas.liqPrice(pos.direction, pos.entryPrice, pos.leverage, storage.getCoinMmr(pos.symbol));
     let liquidated = false;
     if (pos.direction === 'Long' && markPrice <= liqVal) liquidated = true;
     if (pos.direction === 'Short' && markPrice >= liqVal) liquidated = true;
@@ -175,7 +174,7 @@ function liquidatePosition(pos) {
   const settings = storage.getSettings();
   const posValue = formulas.positionValue(pos.quantity, pos.entryPrice);
   const marginAmount = formulas.margin(posValue, pos.leverage);
-  const liqVal = formulas.liqPrice(pos.direction, pos.entryPrice, pos.leverage, settings.mmr);
+  const liqVal = formulas.liqPrice(pos.direction, pos.entryPrice, pos.leverage, storage.getCoinMmr(pos.symbol));
 
   const openFeeAmount = pos.openFee || 0;
   const netRealized = -marginAmount - openFeeAmount;
@@ -212,7 +211,7 @@ export function calculateAccountState(prices) {
   const leverage = settings.leverage;
   const marginUsed = formulas.marginInUse(positions, leverage);
   const avbl = formulas.availableBalance(currentBalance, positions, leverage);
-  const unrealized = formulas.unrealizedPnl(positions, prices);
+  const unrealized = formulas.unrealizedPnl(positions, prices, settings.feeRate);
 
   return {
     balance: currentBalance,
@@ -222,17 +221,23 @@ export function calculateAccountState(prices) {
   };
 }
 
-export function getPositionMetrics(position, markPrice, settings) {
+export function getPositionMetrics(position, markPrice, settings, fundingRate = 0) {
   const posVal = formulas.positionValue(position.quantity, position.entryPrice);
   const marginVal = formulas.margin(posVal, position.leverage);
   const pnlVal = formulas.pnl(position.direction, position.entryPrice, markPrice, position.quantity);
-  const roiVal = formulas.roi(pnlVal, marginVal);
-  const liqVal = formulas.liqPrice(position.direction, position.entryPrice, position.leverage, settings.mmr);
+  const openFeeAmount = position.openFee ?? formulas.openFee(posVal, settings.feeRate);
+  const netUnrealized = formulas.netUnrealizedPnl(
+    position.direction, position.entryPrice, markPrice, position.quantity,
+    openFeeAmount, settings.feeRate, fundingRate,
+  );
+  const roiVal = formulas.roi(netUnrealized, marginVal);
+  const liqVal = formulas.liqPrice(position.direction, position.entryPrice, position.leverage, storage.getCoinMmr(position.symbol));
 
   return {
     positionValue: posVal,
     margin: marginVal,
     pnl: pnlVal,
+    netUnrealized,
     roi: roiVal,
     liqPrice: liqVal,
     markPrice,

@@ -957,7 +957,7 @@
 .positions-row {
   min-height: 52px;
   border-bottom: 1px solid #EAECEF;
-  font-weight: 600;
+  font-weight: 400;
   color: #1E2329;
 }
 
@@ -1079,7 +1079,7 @@
 }
 
 .positions-table__size-value {
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .positions-table__size-unit {
@@ -1099,7 +1099,7 @@
 }
 
 .positions-table__pnl-value {
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .positions-table__pnl-roi {
@@ -1604,7 +1604,7 @@
 
 .history-table__detail-value {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
   color: #1E2329;
   line-height: 22px;
 }

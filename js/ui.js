@@ -557,7 +557,7 @@ function updateTickerConnection(status) {
   }
   if (textEl) {
     textEl.textContent = connected
-      ? 'Margined Perpetual Chart | Binance Futures'
+      ? 'Stable connection'
       : (status === 'reconnecting' ? 'Reconnecting...' : 'Connecting...');
   }
 }

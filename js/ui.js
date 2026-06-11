@@ -608,20 +608,47 @@ const SHARE_QR_SRC = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&d
 const SHARE_FAVICON_SRC = 'https://bin.bnbstatic.com/static/images/common/favicon.ico';
 const SHARE_AVATAR_SRC = 'assets/icons/share-avatar.png';
 const SHARE_LOGO_SRC = 'assets/icons/lightlogo.png';
+const SHARE_INFO_MODES = ['pnl', 'roi', 'both'];
 
-function formatShareDate() {
-  const d = new Date();
+let shareSnapshot = null;
+let shareInfoMode = 'pnl';
+let shareModalBound = false;
+
+function formatShareDate(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
   const pad = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function buildShareCardHtml({ symbol, direction, leverage, entryPrice, secondPrice, secondPriceLabel, pnl, pricePrecision }) {
-  const pColor = pnl >= 0 ? 'text-long' : 'text-short';
-  const dirClass = direction === 'Long' ? 'share-card__direction--long' : 'share-card__direction--short';
-  const safeSymbol = escapeHtml(symbol);
-  const safeDir = escapeHtml(direction);
-  const safeLeverage = escapeHtml(String(leverage));
-  const safeSecondLabel = escapeHtml(secondPriceLabel);
+function buildShareMetricsHtml(snapshot, infoMode) {
+  const pColor = snapshot.pnl >= 0 ? 'text-long' : 'text-short';
+  const rColor = snapshot.roi >= 0 ? 'text-long' : 'text-short';
+
+  if (infoMode === 'roi') {
+    return `<div class="share-card__pnl">
+      <span class="share-card__pnl-value ${rColor}">${formulas.formatPercent(snapshot.roi, 2)}</span>
+    </div>`;
+  }
+
+  const pnlBlock = `<div class="share-card__pnl">
+      <span class="share-card__pnl-value ${pColor}">${formulas.formatPnl(snapshot.pnl, 2)}</span>
+      <span class="share-card__pnl-unit">USDT</span>
+    </div>`;
+
+  if (infoMode === 'both') {
+    return `${pnlBlock}
+    <div class="share-card__roi ${rColor}">${formulas.formatPercent(snapshot.roi, 2)}</div>`;
+  }
+
+  return pnlBlock;
+}
+
+function buildShareCardHtml(snapshot, infoMode = 'pnl') {
+  const dirClass = snapshot.direction === 'Long' ? 'share-card__direction--long' : 'share-card__direction--short';
+  const safeSymbol = escapeHtml(snapshot.symbol);
+  const safeDir = escapeHtml(snapshot.direction);
+  const safeLeverage = escapeHtml(String(snapshot.leverage));
+  const safeSecondLabel = escapeHtml(snapshot.secondPriceLabel);
 
   return `
     <img class="share-card__watermark" src="${SHARE_FAVICON_SRC}" alt="" aria-hidden="true">
@@ -629,7 +656,7 @@ function buildShareCardHtml({ symbol, direction, leverage, entryPrice, secondPri
       <img class="share-card__avatar" src="${SHARE_AVATAR_SRC}" alt="" width="36" height="36">
       <div class="share-card__user">
         <span class="share-card__username">${SHARE_USERNAME}</span>
-        <span class="share-card__date">${formatShareDate()}</span>
+        <span class="share-card__date">${escapeHtml(snapshot.capturedAt)}</span>
       </div>
     </div>
     <div class="share-card__pair">${safeSymbol} Perpetual</div>
@@ -637,18 +664,15 @@ function buildShareCardHtml({ symbol, direction, leverage, entryPrice, secondPri
       <span class="share-card__direction ${dirClass}">${safeDir}</span>
       <span class="share-card__leverage"> | ${safeLeverage}x</span>
     </div>
-    <div class="share-card__pnl">
-      <span class="share-card__pnl-value ${pColor}">${formulas.formatPnl(pnl, 2)}</span>
-      <span class="share-card__pnl-unit">USDT</span>
-    </div>
+    ${buildShareMetricsHtml(snapshot, infoMode)}
     <div class="share-card__prices">
       <div class="share-card__price-col">
         <span class="share-card__price-label">Entry Price</span>
-        <span class="share-card__price-value">${formulas.formatPrice(entryPrice, pricePrecision)}</span>
+        <span class="share-card__price-value">${formulas.formatPrice(snapshot.entryPrice, snapshot.pricePrecision)}</span>
       </div>
       <div class="share-card__price-col">
         <span class="share-card__price-label">${safeSecondLabel}</span>
-        <span class="share-card__price-value">${formulas.formatPrice(secondPrice, pricePrecision)}</span>
+        <span class="share-card__price-value">${formulas.formatPrice(snapshot.secondPrice, snapshot.pricePrecision)}</span>
       </div>
     </div>
     <div class="share-card__footer">
@@ -662,28 +686,158 @@ function buildShareCardHtml({ symbol, direction, leverage, entryPrice, secondPri
     </div>`;
 }
 
-function openShareOverlay(html) {
+function setShareInfoMode(mode) {
+  if (!SHARE_INFO_MODES.includes(mode)) return;
+  shareInfoMode = mode;
   const overlay = el('share-modal');
-  const body = el('share-card-body');
-  if (!overlay || !body) return;
+  overlay?.querySelectorAll('input[name="share-info-mode"]').forEach(input => {
+    input.checked = input.value === mode;
+  });
+  renderShareCardFromSnapshot();
+}
 
-  body.innerHTML = html;
+function renderShareCardFromSnapshot() {
+  if (!shareSnapshot) return;
+  const body = el('share-card-body');
+  if (!body) return;
+  body.innerHTML = buildShareCardHtml(shareSnapshot, shareInfoMode);
+}
+
+function cycleShareInfoMode(step) {
+  const idx = SHARE_INFO_MODES.indexOf(shareInfoMode);
+  const next = (idx + step + SHARE_INFO_MODES.length) % SHARE_INFO_MODES.length;
+  setShareInfoMode(SHARE_INFO_MODES[next]);
+}
+
+async function captureShareCardBlob() {
+  const card = el('share-card-body');
+  if (!card) throw new Error('Share card not found');
+  const { default: html2canvas } = await import('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm');
+  const canvas = await html2canvas(card, {
+    backgroundColor: '#181A20',
+    scale: 2,
+    useCORS: true,
+    logging: false,
+  });
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error('Failed to capture card'))), 'image/png');
+  });
+}
+
+async function saveShareCard() {
+  try {
+    const blob = await captureShareCardBlob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `binance-futures-${shareSnapshot?.symbol || 'trade'}.png`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showToast('Card saved', 'success');
+  } catch {
+    showToast('Could not save card', 'error');
+  }
+}
+
+async function copyShareCard() {
+  try {
+    const blob = await captureShareCardBlob();
+    if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
+      showToast('Copy not supported in this browser', 'error');
+      return;
+    }
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    showToast('Card copied', 'success');
+  } catch {
+    showToast('Could not copy card', 'error');
+  }
+}
+
+function shareToTelegram() {
+  const text = encodeURIComponent(`Check out my ${shareSnapshot?.symbol || ''} trade on Binance Futures`);
+  const url = encodeURIComponent('https://www.binance.com');
+  window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank', 'noopener,noreferrer');
+}
+
+function shareToX() {
+  const text = encodeURIComponent(`My ${shareSnapshot?.symbol || ''} trade on @Binance Futures`);
+  const url = encodeURIComponent('https://www.binance.com');
+  window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank', 'noopener,noreferrer');
+}
+
+function openShareOverlay(snapshot) {
+  const overlay = el('share-modal');
+  if (!overlay) return;
+
+  shareSnapshot = { ...snapshot };
+  shareInfoMode = 'pnl';
+
+  overlay.querySelectorAll('input[name="share-info-mode"]').forEach(input => {
+    input.checked = input.value === 'pnl';
+  });
+
+  renderShareCardFromSnapshot();
 
   const previousFocus = document.activeElement;
   overlay.removeAttribute('hidden');
-  overlay.setAttribute('role', 'dialog');
-  overlay.setAttribute('aria-modal', 'true');
-  const closeBtn = qs('.share-overlay__close', overlay);
+  const closeBtn = qs('.share-dialog__close', overlay);
   if (closeBtn) closeBtn.focus();
   overlay._previousFocus = previousFocus;
-  overlay._trapHandler = trapFocus.bind(null, overlay);
-  overlay.addEventListener('keydown', overlay._trapHandler);
+  if (!overlay._trapHandler) {
+    overlay._trapHandler = trapFocus.bind(null, overlay);
+    overlay.addEventListener('keydown', overlay._trapHandler);
+  }
+}
+
+export function initShareModal() {
+  if (shareModalBound) return;
+  shareModalBound = true;
+
+  const overlay = el('share-modal');
+  if (!overlay) return;
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) hideShareModal();
+
+    const closeBtn = e.target.closest('.share-dialog__close');
+    if (closeBtn) {
+      hideShareModal();
+      return;
+    }
+
+    const prevBtn = e.target.closest('.share-dialog__chevron--prev');
+    if (prevBtn) {
+      cycleShareInfoMode(-1);
+      return;
+    }
+
+    const nextBtn = e.target.closest('.share-dialog__chevron--next');
+    if (nextBtn) {
+      cycleShareInfoMode(1);
+      return;
+    }
+
+    const actionBtn = e.target.closest('[data-share-action]');
+    if (!actionBtn) return;
+    const action = actionBtn.dataset.shareAction;
+    if (action === 'save') saveShareCard();
+    else if (action === 'copy') copyShareCard();
+    else if (action === 'telegram') shareToTelegram();
+    else if (action === 'x') shareToX();
+  });
+
+  overlay.querySelectorAll('input[name="share-info-mode"]').forEach(input => {
+    input.addEventListener('change', () => {
+      if (input.checked) setShareInfoMode(input.value);
+    });
+  });
 }
 
 export function showShareModalForHistory(historyItem) {
   const coin = storage.getCoinBySymbol(historyItem.symbol);
   const pricePrecision = coin?.pricePrecision ?? 2;
-  openShareOverlay(buildShareCardHtml({
+  const capturedAt = formatShareDate();
+  openShareOverlay({
     symbol: historyItem.symbol,
     direction: historyItem.direction,
     leverage: historyItem.leverage,
@@ -691,8 +845,10 @@ export function showShareModalForHistory(historyItem) {
     secondPrice: historyItem.closePrice,
     secondPriceLabel: 'Exit Price',
     pnl: historyItem.realizedPnl,
+    roi: historyItem.roiPercent ?? 0,
     pricePrecision,
-  }));
+    capturedAt,
+  });
 }
 
 export function showShareModalForPosition(position, markPrice, settings) {
@@ -702,8 +858,9 @@ export function showShareModalForPosition(position, markPrice, settings) {
   const fundingRate = getTickerData(position.symbol)?.fundingRate ?? position.fundingRate ?? 0;
   const mmr = storage.getCoinMmr(position.symbol);
   const metrics = calcPosMetrics(position, markPrice, settings, fundingRate, feeRate, mmr);
+  const capturedAt = formatShareDate();
 
-  openShareOverlay(buildShareCardHtml({
+  openShareOverlay({
     symbol: position.symbol,
     direction: position.direction,
     leverage: position.leverage,
@@ -711,8 +868,10 @@ export function showShareModalForPosition(position, markPrice, settings) {
     secondPrice: markPrice,
     secondPriceLabel: 'Last Price',
     pnl: metrics.pnl,
+    roi: metrics.roi,
     pricePrecision,
-  }));
+    capturedAt,
+  });
 }
 
 export function showShareModal(historyItem) {
@@ -735,10 +894,7 @@ function trapFocus(container, e) {
 export function hideShareModal() {
   const overlay = el('share-modal');
   if (!overlay) return;
-  if (overlay._trapHandler) {
-    overlay.removeEventListener('keydown', overlay._trapHandler);
-    overlay._trapHandler = null;
-  }
+  shareSnapshot = null;
   const prev = overlay._previousFocus;
   overlay.setAttribute('hidden', '');
   if (prev && typeof prev.focus === 'function') prev.focus();

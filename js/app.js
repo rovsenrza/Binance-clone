@@ -298,18 +298,11 @@ function bindEvents() {
     });
   }
 
-  // Share modal close
-  const shareModal = document.getElementById('share-modal');
-  if (shareModal) {
-    shareModal.addEventListener('click', (e) => {
-      if (e.target === shareModal || e.target.closest('.share-overlay__close')) {
-        ui.hideShareModal();
-      }
-    });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') ui.hideShareModal();
-    });
-  }
+  ui.initShareModal();
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') ui.hideShareModal();
+  });
 }
 
 // --- Trade Execution ---

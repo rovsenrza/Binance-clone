@@ -960,8 +960,64 @@
 
     <!-- ===== SHARE MODAL ===== -->
     <div class="share-overlay" id="share-modal" hidden>
-      <button class="share-overlay__close" type="button" aria-label="Close">✕</button>
-      <div class="share-card" id="share-card-body"></div>
+      <div class="share-dialog" role="dialog" aria-modal="true" aria-label="Share trade">
+        <button class="share-dialog__close" type="button" aria-label="Close">
+          <img src="assets/icons/share-close.svg" width="20" height="20" alt="">
+        </button>
+        <div class="share-dialog__carousel">
+          <button class="share-dialog__chevron share-dialog__chevron--prev" type="button" aria-label="Previous">
+            <img src="assets/icons/share-chevron-left.svg" width="20" height="20" alt="">
+          </button>
+          <div class="share-card" id="share-card-body"></div>
+          <button class="share-dialog__chevron share-dialog__chevron--next" type="button" aria-label="Next">
+            <img src="assets/icons/share-chevron-right.svg" width="20" height="20" alt="">
+          </button>
+        </div>
+        <div class="share-dialog__options">
+          <span class="share-dialog__options-label">Select Information</span>
+          <label class="share-dialog__radio">
+            <input type="radio" name="share-info-mode" value="pnl" checked>
+            <span class="share-dialog__radio-mark"></span>
+            <span>PNL</span>
+          </label>
+          <label class="share-dialog__radio">
+            <input type="radio" name="share-info-mode" value="roi">
+            <span class="share-dialog__radio-mark"></span>
+            <span>ROI</span>
+          </label>
+          <label class="share-dialog__radio">
+            <input type="radio" name="share-info-mode" value="both">
+            <span class="share-dialog__radio-mark"></span>
+            <span>PNL &amp; ROI</span>
+          </label>
+        </div>
+        <div class="share-dialog__actions">
+          <button class="share-dialog__action" type="button" data-share-action="save">
+            <div class="share-dialog__action-icon">
+              <img src="https://t4.ftcdn.net/jpg/13/08/49/49/360_F_1308494981_Fmp0u1pbBOuzhyiGZfOhxCFLFADobO3O.jpg" width="24" height="24" alt="">
+            </div>
+            <span>Save</span>
+          </button>
+          <button class="share-dialog__action" type="button" data-share-action="copy">
+            <div class="share-dialog__action-icon share-dialog__action-icon--copy">
+              <img src="https://cdn-icons-png.flaticon.com/512/9762/9762302.png" width="24" height="24" alt="">
+            </div>
+            <span>Copy</span>
+          </button>
+          <button class="share-dialog__action" type="button" data-share-action="telegram">
+            <div class="share-dialog__action-icon">
+              <img src="https://cdn-icons-png.flaticon.com/512/4423/4423663.png" width="24" height="24" alt="">
+            </div>
+            <span>Telegram</span>
+          </button>
+          <button class="share-dialog__action" type="button" data-share-action="x">
+            <div class="share-dialog__action-icon">
+              <img src="assets/icons/share-x.svg" width="24" height="24" alt="">
+            </div>
+            <span>X</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <script type="module" src="js/app.js"></script>

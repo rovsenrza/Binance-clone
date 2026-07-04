@@ -292,6 +292,7 @@ export async function initStorage() {
 
   migrateMarginMode();
   migrateCoinMmr();
+  migrateCoinApiSymbols();
   initDone = true;
 }
 
@@ -333,6 +334,17 @@ function migrateCoinMmr() {
     const { mmr, ...rest } = cache.settings;
     cache.settings = rest;
     changed = true;
+  }
+  if (changed) enqueuePersist();
+}
+
+function migrateCoinApiSymbols() {
+  let changed = false;
+  for (const coin of cache.coins) {
+    if (!coin.apiSymbol) {
+      coin.apiSymbol = coin.symbol;
+      changed = true;
+    }
   }
   if (changed) enqueuePersist();
 }

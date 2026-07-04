@@ -7,6 +7,19 @@ const wsConnections = {};
 let restFallbackTimer = null;
 let oiTimer = null;
 let connectionStatus = 'disconnected';
+/** @type {{ symbol: string, apiSymbol: string }[]} */
+let feedConfigs = [];
+
+function normalizeFeedConfigs(configs) {
+  if (!configs?.length) return [];
+  if (typeof configs[0] === 'string') {
+    return configs.map(symbol => ({ symbol, apiSymbol: symbol }));
+  }
+  return configs.map(({ symbol, apiSymbol }) => ({
+    symbol,
+    apiSymbol: apiSymbol || symbol,
+  }));
+}
 
 export function getPriceData() {
   return priceData;
@@ -59,11 +72,11 @@ async function fetchPremiumIndex(symbol) {
   }
 }
 
-async function fetchAllRest(symbols) {
-  for (const symbol of symbols) {
+async function fetchAllRest(configs) {
+  for (const { symbol, apiSymbol } of configs) {
     const [ticker, premium] = await Promise.all([
-      fetchTicker24h(symbol),
-      fetchPremiumIndex(symbol),
+      fetchTicker24h(apiSymbol),
+      fetchPremiumIndex(apiSymbol),
     ]);
 
     if (ticker || premium) {
@@ -92,8 +105,8 @@ async function fetchAllRest(symbols) {
 
 // --- WebSocket ---
 
-function connectWebSocket(symbol) {
-  const lowerSymbol = symbol.toLowerCase();
+function connectWebSocket(symbol, apiSymbol = symbol) {
+  const lowerSymbol = apiSymbol.toLowerCase();
   const key = symbol;
 
   if (wsConnections[key]?.ws?.readyState === WebSocket.OPEN) return;
@@ -114,6 +127,7 @@ function connectWebSocket(symbol) {
   const conn = {
     ws,
     symbol,
+    apiSymbol,
     reconnectAttempts: 0,
     reconnectTimer: null,
   };
@@ -179,7 +193,7 @@ function scheduleReconnect(key) {
   const delay = Math.min(1000 * Math.pow(2, conn.reconnectAttempts), 30000);
 
   conn.reconnectTimer = setTimeout(() => {
-    connectWebSocket(conn.symbol);
+    connectWebSocket(conn.symbol, conn.apiSymbol);
   }, delay);
 }
 
@@ -197,9 +211,9 @@ function disconnectWebSocket(symbol) {
 
 // --- Open Interest ---
 
-async function fetchOpenInterest(symbol) {
+async function fetchOpenInterest(symbol, apiSymbol = symbol) {
   try {
-    const resp = await fetch(`${REST_BASE}/fapi/v1/openInterest?symbol=${symbol}`);
+    const resp = await fetch(`${REST_BASE}/fapi/v1/openInterest?symbol=${apiSymbol}`);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
     const existing = priceData[symbol] || {};
@@ -212,26 +226,30 @@ async function fetchOpenInterest(symbol) {
 
 // --- Public API ---
 
-export function startPriceFeed(symbols) {
-  if (!symbols || symbols.length === 0) return;
+export function startPriceFeed(configs) {
+  feedConfigs = normalizeFeedConfigs(configs);
+  if (feedConfigs.length === 0) return;
 
-  fetchAllRest(symbols);
-  symbols.forEach(fetchOpenInterest);
+  fetchAllRest(feedConfigs);
+  feedConfigs.forEach(({ symbol, apiSymbol }) => fetchOpenInterest(symbol, apiSymbol));
 
-  for (const symbol of symbols) {
-    connectWebSocket(symbol);
+  for (const { symbol, apiSymbol } of feedConfigs) {
+    connectWebSocket(symbol, apiSymbol);
   }
 
-  startRestFallback(symbols);
+  startRestFallback(feedConfigs);
 
   if (oiTimer) clearInterval(oiTimer);
-  oiTimer = setInterval(() => symbols.forEach(fetchOpenInterest), 15000);
+  oiTimer = setInterval(
+    () => feedConfigs.forEach(({ symbol, apiSymbol }) => fetchOpenInterest(symbol, apiSymbol)),
+    15000,
+  );
 }
 
-function startRestFallback(symbols) {
+function startRestFallback(configs) {
   if (restFallbackTimer) clearInterval(restFallbackTimer);
   restFallbackTimer = setInterval(() => {
-    fetchAllRest(symbols);
+    fetchAllRest(configs);
   }, 3000);
 }
 
@@ -246,20 +264,35 @@ export function stopPriceFeed() {
   connectionStatus = 'disconnected';
 }
 
-export function updateFeedSymbols(symbols) {
+export function updateFeedSymbols(configs) {
+  feedConfigs = normalizeFeedConfigs(configs);
   const currentKeys = new Set(Object.keys(wsConnections));
-  const newKeys = new Set(symbols);
+  const newKeys = new Set(feedConfigs.map(c => c.symbol));
 
   for (const key of currentKeys) {
     if (!newKeys.has(key)) disconnectWebSocket(key);
   }
 
-  for (const symbol of symbols) {
-    if (!currentKeys.has(symbol)) connectWebSocket(symbol);
+  const added = [];
+  for (const { symbol, apiSymbol } of feedConfigs) {
+    const existing = wsConnections[symbol];
+    if (!existing) {
+      connectWebSocket(symbol, apiSymbol);
+      added.push({ symbol, apiSymbol });
+    } else if (existing.apiSymbol !== apiSymbol) {
+      disconnectWebSocket(symbol);
+      connectWebSocket(symbol, apiSymbol);
+      added.push({ symbol, apiSymbol });
+    }
+  }
+
+  if (added.length) {
+    fetchAllRest(added);
+    added.forEach(({ symbol, apiSymbol }) => fetchOpenInterest(symbol, apiSymbol));
   }
 
   if (restFallbackTimer) clearInterval(restFallbackTimer);
-  startRestFallback(symbols);
+  startRestFallback(feedConfigs);
 }
 
 // --- Funding timer ---

@@ -1,0 +1,71 @@
+# Binance Futures Demo — Apache config
+
+# --- Directory listing off ---
+Options -Indexes +FollowSymLinks
+
+DirectoryIndex index.html
+
+# --- UTF-8 ---
+AddDefaultCharset UTF-8
+
+# --- MIME types (ES modules) ---
+<IfModule mod_mime.c>
+  AddType application/javascript .js
+  AddType text/css .css
+  AddType image/svg+xml .svg
+  AddType image/webp .webp
+</IfModule>
+
+# --- HTTPS redirect (uncomment on production if SSL is enabled) ---
+# <IfModule mod_rewrite.c>
+#   RewriteEngine On
+#   RewriteCond %{HTTPS} !=on
+#   RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# </IfModule>
+
+# --- Block internal / dev files from web access ---
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  RewriteRule ^\.cursor/ - [F,L]
+  RewriteRule ^docs/ - [F,L]
+  RewriteRule ^business-contents/ - [F,L]
+  RewriteRule ^\.git - [F,L]
+  RewriteRule ^firestore\.rules$ - [F,L]
+</IfModule>
+
+# --- Cache static assets ---
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresDefault "access plus 1 hour"
+  ExpiresByType text/css "access plus 1 month"
+  ExpiresByType application/javascript "access plus 1 month"
+  ExpiresByType image/png "access plus 1 month"
+  ExpiresByType image/jpeg "access plus 1 month"
+  ExpiresByType image/svg+xml "access plus 1 month"
+  ExpiresByType image/x-icon "access plus 1 year"
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(css|js|png|jpg|jpeg|svg|ico|webp|woff2?)$">
+    Header set Cache-Control "public, max-age=2592000"
+  </FilesMatch>
+
+  <FilesMatch "\.(html)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# --- Gzip compression ---
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css
+  AddOutputFilterByType DEFLATE application/javascript application/json
+  AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# --- Custom error page (optional) ---
+# ErrorDocument 404 /index.html

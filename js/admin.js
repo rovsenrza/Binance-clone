@@ -130,6 +130,11 @@ function bindCoinForm() {
   }
 }
 
+function parseAdminDecimal(value) {
+  if (value == null || value === '') return NaN;
+  return parseFloat(String(value).trim().replace(/,/g, '.'));
+}
+
 function saveCoin() {
   const symbol = document.getElementById('coin-symbol')?.value?.trim().toUpperCase();
   const baseAsset = document.getElementById('coin-base')?.value?.trim().toUpperCase();
@@ -138,7 +143,7 @@ function saveCoin() {
   const apiSymbol = document.getElementById('coin-api')?.value?.trim().toUpperCase() || symbol;
   const pricePrecision = parseInt(document.getElementById('coin-price-precision')?.value, 10);
   const qtyPrecision = parseInt(document.getElementById('coin-qty-precision')?.value, 10);
-  const mmrPercent = parseFloat(document.getElementById('coin-mmr')?.value);
+  const mmrPercent = parseAdminDecimal(document.getElementById('coin-mmr')?.value);
   const alertEl = document.getElementById('coin-alert');
 
   if (!symbol || !baseAsset) {

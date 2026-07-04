@@ -8,6 +8,14 @@ let activeTab = 'positions';
 let historyPeriod = '1d';
 let updateTimer = null;
 let countdownTimer = null;
+let lastTpSlCheck = 0;
+
+function coinFeedConfigs(coins) {
+  return coins.map(c => ({
+    symbol: c.symbol,
+    apiSymbol: c.apiSymbol || c.symbol,
+  }));
+}
 
 async function init() {
   try {
@@ -43,8 +51,7 @@ async function init() {
     storage.setSelectedCoin(currentSymbol);
   }
 
-  const symbols = coins.map(c => c.symbol);
-  api.startPriceFeed(symbols);
+  api.startPriceFeed(coinFeedConfigs(coins));
   api.onPriceUpdate(onPriceUpdate);
 
   window.addEventListener('storage-error', (e) => {
@@ -58,6 +65,10 @@ async function init() {
   updateTimer = setInterval(monitorLoop, 2000);
   countdownTimer = setInterval(updateCountdown, 1000);
 
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) monitorLoop();
+  });
+
   setTimeout(renderAll, 500);
 }
 
@@ -66,7 +77,7 @@ function handleCloudUpdate(detail = {}) {
   if (coins.length === 0) return;
 
   const symbols = coins.map(c => c.symbol);
-  api.updateFeedSymbols(symbols);
+  api.updateFeedSymbols(coinFeedConfigs(coins));
 
   const remoteCoin = storage.getSelectedCoin();
   if (remoteCoin && symbols.includes(remoteCoin)) {
@@ -83,6 +94,8 @@ function handleCloudUpdate(detail = {}) {
 }
 
 function onPriceUpdate(symbol) {
+  runTpSlCheck(false);
+
   if (symbol === currentSymbol) {
     renderPairAndAccount();
     renderPositions();
@@ -91,7 +104,11 @@ function onPriceUpdate(symbol) {
   renderTicker();
 }
 
-function monitorLoop() {
+function runTpSlCheck(force = true) {
+  const now = Date.now();
+  if (!force && now - lastTpSlCheck < 250) return;
+  lastTpSlCheck = now;
+
   const prices = api.getPriceData();
   const closed = trading.checkTpSl(prices);
   if (closed.length > 0) {
@@ -101,6 +118,10 @@ function monitorLoop() {
     });
     renderAll();
   }
+}
+
+function monitorLoop() {
+  runTpSlCheck(true);
 }
 
 function updateCountdown() {
@@ -148,7 +169,7 @@ function renderTicker() {
 
 function updateCalcFields() {
   const sizeInput = document.getElementById('order-size');
-  const size = sizeInput ? parseFloat(sizeInput.value) : 0;
+  const size = sizeInput ? parseDecimalValue(sizeInput.value) : 0;
   const markPrice = api.getMarkPrice(currentSymbol);
   const settings = storage.getSettings();
   ui.renderCalcFields(size, markPrice, settings, currentSymbol);
@@ -171,6 +192,24 @@ function formatDate(d) {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 }
 
+function parseDecimalValue(value) {
+  if (value == null || value === '') return NaN;
+  return parseFloat(String(value).trim().replace(/,/g, '.'));
+}
+
+function bindDecimalInput(input, onInput) {
+  if (!input) return;
+  input.addEventListener('input', () => {
+    const { selectionStart: start, selectionEnd: end } = input;
+    const normalized = input.value.replace(/,/g, '.');
+    if (input.value !== normalized) {
+      input.value = normalized;
+      input.setSelectionRange(start, end);
+    }
+    onInput?.();
+  });
+}
+
 // --- Event Binding ---
 
 function bindEvents() {
@@ -182,9 +221,10 @@ function bindEvents() {
   const btnShort = document.getElementById('btn-sell-short');
   if (btnShort) btnShort.addEventListener('click', () => executeTrade('Short'));
 
-  // Size input → update calcs
-  const sizeInput = document.getElementById('order-size');
-  if (sizeInput) sizeInput.addEventListener('input', updateCalcFields);
+  // Decimal inputs: comma → dot (RU mobile keyboards show comma)
+  bindDecimalInput(document.getElementById('order-size'), updateCalcFields);
+  bindDecimalInput(document.getElementById('tp-input'));
+  bindDecimalInput(document.getElementById('sl-input'));
 
   // TP/SL toggle
   const tpslCheck = document.getElementById('tpsl-checkbox');
@@ -314,9 +354,9 @@ function executeTrade(direction) {
   const tpslCheck = document.getElementById('tpsl-checkbox');
   const errorEl = document.getElementById('order-error');
 
-  const size = parseFloat(sizeInput?.value);
-  const tp = tpslCheck?.checked ? parseFloat(tpInput?.value) : null;
-  const sl = tpslCheck?.checked ? parseFloat(slInput?.value) : null;
+  const size = parseDecimalValue(sizeInput?.value);
+  const tp = tpslCheck?.checked ? parseDecimalValue(tpInput?.value) : null;
+  const sl = tpslCheck?.checked ? parseDecimalValue(slInput?.value) : null;
 
   if (errorEl) errorEl.textContent = '';
 

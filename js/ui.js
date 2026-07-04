@@ -13,6 +13,7 @@ const COIN_ICONS = {
   AVAX: 'https://cryptologos.cc/logos/avalanche-avax-logo.svg',
   DOT: 'https://cryptologos.cc/logos/polkadot-new-dot-logo.svg',
   MATIC: 'https://cryptologos.cc/logos/polygon-matic-logo.svg',
+  HYPE: 'https://cryptologos.cc/logos/hyperliquid-hype-logo.svg',
 };
 
 function el(id) { return document.getElementById(id); }
@@ -113,7 +114,10 @@ export function renderPairBlock(symbol, selectedCoin) {
   const symbolEl = el('pair-symbol-text');
   const iconEl = el('pair-coin-icon');
 
-  if (symbolEl) symbolEl.textContent = symbol;
+  if (symbolEl) {
+    symbolEl.textContent = symbol;
+    symbolEl.classList.add('notranslate');
+  }
   if (iconEl) iconEl.innerHTML = coinIconHtml(baseAsset, 24);
   if (volBaseLabel) volBaseLabel.textContent = `24h Vol(${baseAsset})`;
 
@@ -308,8 +312,8 @@ export function renderPositionsTable(positions, prices, settings) {
         <div class="positions-row__symbol">
           <span class="positions-row__direction-bar ${barClass}"></span>
           <div class="positions-row__symbol-info">
-            <span class="positions-row__symbol-name">${safeSymbol}</span>
-            <span class="positions-row__symbol-meta">
+            <span class="positions-row__symbol-name notranslate" translate="no">${safeSymbol}</span>
+            <span class="positions-row__symbol-meta notranslate" translate="no">
               <span class="positions-row__tag">Perp</span>
               <span class="positions-row__tag">${safeLeverage}x</span>
             </span>
@@ -524,9 +528,9 @@ export function renderCoinDropdown(coins, currentSymbol) {
     const safeSym = escapeHtml(coin.symbol);
     const baseAsset = coin.baseAsset || coin.symbol.replace('USDT', '');
     const active = coin.symbol === currentSymbol ? 'pair-dropdown__item--active' : '';
-    return `<div class="pair-dropdown__item ${active}" data-symbol="${safeSym}">
+    return `<div class="pair-dropdown__item ${active} notranslate" data-symbol="${safeSym}" translate="no">
       <span class="pair-dropdown__item-icon">${coinIconHtml(baseAsset, 20)}</span>
-      <span>${safeSym} <span style="color:var(--color-text-tertiary)">Perp</span></span>
+      <span>${safeSym} <span class="pair-dropdown__perp" style="color:var(--color-text-tertiary)">Perp</span></span>
     </div>`;
   }).join('');
 }
@@ -541,7 +545,7 @@ function buildTickerItemHtml(coin, data) {
   const price = formulas.formatPrice(data.markPrice || data.lastPrice || 0, coin.pricePrecision ?? 1);
   const baseAsset = coin.baseAsset || coin.symbol.replace('USDT', '');
   const safeSymbol = escapeHtml(coin.symbol);
-  return `<div class="ticker-bar__item" data-ticker-symbol="${safeSymbol}">
+  return `<div class="ticker-bar__item notranslate" data-ticker-symbol="${safeSymbol}" translate="no">
     <span class="ticker-bar__coin">${coinIconHtml(baseAsset, 14)}</span>
     <span class="ticker-bar__symbol">${safeSymbol}</span>
     <span class="ticker-bar__change ${colorClass}">${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</span>

@@ -1,20 +1,7 @@
-import * as formulas from './formulas.js';
-import * as storage from './storage.js';
-import { getTickerData, getFundingCountdown, getConnectionStatus } from './api.js';
-
-const COIN_ICONS = {
-  BTC: 'https://cryptologos.cc/logos/bitcoin-btc-logo.svg',
-  BNB: 'https://cryptologos.cc/logos/bnb-bnb-logo.svg',
-  ETH: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg',
-  SOL: 'https://cryptologos.cc/logos/solana-sol-logo.svg',
-  XRP: 'https://cryptologos.cc/logos/xrp-xrp-logo.svg',
-  DOGE: 'https://cryptologos.cc/logos/dogecoin-doge-logo.svg',
-  ADA: 'https://cryptologos.cc/logos/cardano-ada-logo.svg',
-  AVAX: 'https://cryptologos.cc/logos/avalanche-avax-logo.svg',
-  DOT: 'https://cryptologos.cc/logos/polkadot-new-dot-logo.svg',
-  MATIC: 'https://cryptologos.cc/logos/polygon-matic-logo.svg',
-  HYPE: 'https://cryptologos.cc/logos/hyperliquid-hype-logo.svg',
-};
+import * as formulas from './formulas.js?v=20260713';
+import * as storage from './storage.js?v=20260713';
+import { getTickerData, getFundingCountdown, getConnectionStatus } from './api.js?v=20260713';
+import { getBinanceIconUrl, getBinanceIconRetryUrl } from './binance-icons.js?v=20260713';
 
 function el(id) { return document.getElementById(id); }
 function qs(sel, parent) { return (parent || document).querySelector(sel); }
@@ -28,30 +15,68 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function showCoinIconFallback(img) {
+  if (!img?.classList) return;
+  img.classList.add('coin-icon-wrap__img--hidden');
+  const fallback = img.nextElementSibling;
+  if (fallback?.classList.contains('coin-icon-wrap__fallback')) {
+    fallback.classList.add('coin-icon-wrap__fallback--visible');
+  }
+}
+
+function hideCoinIconFallback(img) {
+  if (!img?.classList) return;
+  img.classList.remove('coin-icon-wrap__img--hidden');
+  const fallback = img.nextElementSibling;
+  if (fallback?.classList.contains('coin-icon-wrap__fallback')) {
+    fallback.classList.remove('coin-icon-wrap__fallback--visible');
+  }
+}
+
+function handleCoinIconError(img) {
+  const base = img.dataset.base;
+  const retries = Number(img.dataset.iconRetries || 0);
+  if (retries >= 3) {
+    showCoinIconFallback(img);
+    return;
+  }
+  const next = getBinanceIconRetryUrl(base, img.src);
+  if (next && next !== img.src) {
+    img.dataset.iconRetries = String(retries + 1);
+    img.src = next;
+    return;
+  }
+  showCoinIconFallback(img);
+}
+
+export function initCoinIconFallbacks(root = document) {
+  root.querySelectorAll('.coin-icon-wrap img').forEach((img) => {
+    if (!img.onerrorBound) {
+      img.addEventListener('error', () => handleCoinIconError(img));
+      img.addEventListener('load', () => {
+        if (img.naturalWidth > 0) hideCoinIconFallback(img);
+      });
+      img.onerrorBound = true;
+    }
+    if (img.complete) {
+      if (img.naturalWidth > 0) hideCoinIconFallback(img);
+      else handleCoinIconError(img);
+    }
+  });
+}
+
 function coinIconHtml(baseAsset, size = 24) {
   const safe = SAFE_SYMBOL_RE.test(baseAsset) ? baseAsset : 'X';
-  const url = COIN_ICONS[safe];
+  const url = getBinanceIconUrl(safe);
   if (url) {
-    const img = document.createElement('img');
-    img.src = url;
-    img.alt = safe;
-    img.width = size;
-    img.height = size;
-    img.style.borderRadius = '50%';
-    const fallback = document.createElement('span');
-    fallback.className = 'pair-block__coin-icon';
-    fallback.style.cssText = `display:none;width:${size}px;height:${size}px`;
-    fallback.textContent = safe[0];
-    img.addEventListener('error', () => {
-      img.style.display = 'none';
-      fallback.style.display = 'flex';
-    });
-    const wrapper = document.createElement('span');
-    wrapper.appendChild(img);
-    wrapper.appendChild(fallback);
-    return wrapper.innerHTML;
+    return `<span class="coin-icon-wrap coin-icon-wrap--${size}">
+      <img src="${url}" alt="${escapeHtml(safe)}" loading="lazy" referrerpolicy="no-referrer" class="coin-icon-wrap__img" data-base="${escapeHtml(safe)}">
+      <span class="pair-block__coin-icon pair-block__coin-icon--${escapeHtml(safe)} coin-icon-wrap__fallback">${escapeHtml(safe[0])}</span>
+    </span>`;
   }
-  return `<span class="pair-block__coin-icon" style="width:${size}px;height:${size}px">${escapeHtml(safe[0])}</span>`;
+  return `<span class="coin-icon-wrap coin-icon-wrap--${size} coin-icon-wrap--fallback">
+    <span class="pair-block__coin-icon pair-block__coin-icon--${escapeHtml(safe)}">${escapeHtml(safe[0])}</span>
+  </span>`;
 }
 
 function pnlClass(value) {
@@ -69,6 +94,11 @@ function indicatorClassFromPnl(pnl, direction) {
 function formatSizeValue(sizeUsdt, direction, precision = 2) {
   const formatted = formulas.formatPrice(sizeUsdt, precision);
   return direction === 'Short' ? `-${formatted}` : formatted;
+}
+
+function perpTagHtml(extraClass = '') {
+  const cls = extraClass ? `pair-tag-perp ${extraClass}` : 'pair-tag-perp';
+  return `<span class="${cls} notranslate" translate="no" aria-label="Perpetual"></span>`;
 }
 
 // --- Toast ---
@@ -118,7 +148,10 @@ export function renderPairBlock(symbol, selectedCoin) {
     symbolEl.textContent = symbol;
     symbolEl.classList.add('notranslate');
   }
-  if (iconEl) iconEl.innerHTML = coinIconHtml(baseAsset, 24);
+  if (iconEl) {
+    iconEl.innerHTML = coinIconHtml(baseAsset, 24);
+    initCoinIconFallbacks(iconEl);
+  }
   if (volBaseLabel) volBaseLabel.textContent = `24h Vol(${baseAsset})`;
 
   if (!data) {
@@ -137,7 +170,7 @@ export function renderPairBlock(symbol, selectedCoin) {
     priceEl.className = `pair-block__price ${colorClass}`;
   }
 
-  document.title = `${formulas.formatPrice(price, precision)} | ${symbol} USDⓈ-Margined Perpetual Chart | Binance Futures`;
+  document.title = `${formulas.formatTitlePrice(price, precision)} | ${symbol} USDⓈ-Margined Perpetual Chart | Binance Futures`;
 
   if (changeEl) {
     const absChange = formulas.formatPrice(data.priceChange ?? 0, 1);
@@ -314,7 +347,7 @@ export function renderPositionsTable(positions, prices, settings) {
           <div class="positions-row__symbol-info">
             <span class="positions-row__symbol-name notranslate" translate="no">${safeSymbol}</span>
             <span class="positions-row__symbol-meta notranslate" translate="no">
-              <span class="positions-row__tag">Perp</span>
+              ${perpTagHtml('positions-row__tag')}
               <span class="positions-row__tag">${safeLeverage}x</span>
             </span>
           </div>
@@ -450,7 +483,7 @@ export function renderHistoryTable(historyItems) {
             <div class="history-table__header-left">
               <span class="history-table__coin">${coinIconHtml(baseAsset, 20)}</span>
               <span class="history-table__symbol">${safeSymbol}</span>
-              <span class="history-table__tag">Perp</span>
+              ${perpTagHtml('history-table__tag')}
               <span class="history-table__tag">${escapeHtml(h.leverage)}x</span>
               <span class="history-table__direction ${dirClass}">${safeMode} ${safeDir}</span>
               <span class="history-panel__divider"></span>
@@ -529,10 +562,15 @@ export function renderCoinDropdown(coins, currentSymbol) {
     const baseAsset = coin.baseAsset || coin.symbol.replace('USDT', '');
     const active = coin.symbol === currentSymbol ? 'pair-dropdown__item--active' : '';
     return `<div class="pair-dropdown__item ${active} notranslate" data-symbol="${safeSym}" translate="no">
-      <span class="pair-dropdown__item-icon">${coinIconHtml(baseAsset, 20)}</span>
-      <span>${safeSym} <span class="pair-dropdown__perp" style="color:var(--color-text-tertiary)">Perp</span></span>
+      ${coinIconHtml(baseAsset, 20)}
+      <span class="pair-dropdown__item-text notranslate" translate="no">
+        <span class="pair-dropdown__symbol">${safeSym}</span>
+        ${perpTagHtml()}
+      </span>
     </div>`;
   }).join('');
+
+  initCoinIconFallbacks(dropdown);
 }
 
 // --- Bottom Ticker ---
@@ -602,6 +640,8 @@ export function renderTickerBar(coins, prices) {
   track.innerHTML = `
     <div class="ticker-bar__set">${itemsHtml}</div>
     <div class="ticker-bar__set" aria-hidden="true">${itemsHtml}</div>`;
+
+  initCoinIconFallbacks(track);
 }
 
 // --- Share Card ---
@@ -655,7 +695,7 @@ function buildShareCardHtml(snapshot, infoMode = 'pnl') {
   const safeSecondLabel = escapeHtml(snapshot.secondPriceLabel);
 
   return `
-    <img class="share-card__watermark" src="${SHARE_FAVICON_SRC}" alt="" aria-hidden="true">
+    <img class="share-card__watermark" src="${SHARE_FAVICON_SRC}" alt="" aria-hidden="true" referrerpolicy="no-referrer">
     <div class="share-card__header">
       <img class="share-card__avatar" src="${SHARE_AVATAR_SRC}" alt="" width="36" height="36">
       <div class="share-card__user">

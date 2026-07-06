@@ -2,6 +2,8 @@ const REST_BASE = 'https://fapi.binance.com';
 const WS_BASE = 'wss://fstream.binance.com/ws';
 
 const priceData = {};
+/** @type {Record<string, { high: number, low: number }>} */
+const priceExtremes = {};
 const listeners = new Set();
 const wsConnections = {};
 let restFallbackTimer = null;
@@ -31,6 +33,43 @@ export function getMarkPrice(symbol) {
 
 export function getTickerData(symbol) {
   return priceData[symbol] ?? null;
+}
+
+export function getPriceExtremes(symbol) {
+  return priceExtremes[symbol] ?? null;
+}
+
+export function resetPriceExtremes(symbols) {
+  for (const symbol of symbols) {
+    const tick = priceData[symbol];
+    if (!tick?.markPrice) {
+      delete priceExtremes[symbol];
+      continue;
+    }
+    const mark = tick.markPrice;
+    const last = tick.lastPrice > 0 ? tick.lastPrice : mark;
+    priceExtremes[symbol] = {
+      high: Math.max(mark, last),
+      low: Math.min(mark, last),
+    };
+  }
+}
+
+function trackPriceExtremes(symbol, tick) {
+  const mark = tick?.markPrice;
+  if (!mark || mark <= 0) return;
+  const last = tick.lastPrice > 0 ? tick.lastPrice : mark;
+  const high = Math.max(mark, last);
+  const low = Math.min(mark, last);
+  const prev = priceExtremes[symbol];
+  if (!prev) {
+    priceExtremes[symbol] = { high, low };
+    return;
+  }
+  priceExtremes[symbol] = {
+    high: Math.max(prev.high, high),
+    low: Math.min(prev.low, low),
+  };
 }
 
 export function getConnectionStatus() {
@@ -98,6 +137,7 @@ async function fetchAllRest(configs) {
         timestamp: Date.now(),
       };
       connectionStatus = 'connected';
+      trackPriceExtremes(symbol, priceData[symbol]);
       notifyListeners(symbol);
     }
   }
@@ -153,6 +193,7 @@ function connectWebSocket(symbol, apiSymbol = symbol) {
           nextFundingTime: data.T,
           timestamp: Date.now(),
         };
+        trackPriceExtremes(symbol, priceData[symbol]);
         notifyListeners(symbol);
       } else if (data.e === '24hrTicker') {
         priceData[symbol] = {
@@ -167,6 +208,7 @@ function connectWebSocket(symbol, apiSymbol = symbol) {
           quoteVolume: parseFloat(data.q),
           timestamp: Date.now(),
         };
+        trackPriceExtremes(symbol, priceData[symbol]);
         notifyListeners(symbol);
       }
     } catch (e) {
@@ -250,7 +292,7 @@ function startRestFallback(configs) {
   if (restFallbackTimer) clearInterval(restFallbackTimer);
   restFallbackTimer = setInterval(() => {
     fetchAllRest(configs);
-  }, 3000);
+  }, 1000);
 }
 
 export function stopPriceFeed() {

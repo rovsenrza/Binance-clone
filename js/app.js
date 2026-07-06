@@ -1,14 +1,15 @@
-import * as storage from './storage.js';
-import * as api from './api.js';
-import * as trading from './trading.js';
-import * as ui from './ui.js';
+import * as storage from './storage.js?v=20260713';
+import * as api from './api.js?v=20260713';
+import * as trading from './trading.js?v=20260713';
+import * as ui from './ui.js?v=20260713';
+import { loadBinanceLogos } from './binance-icons.js?v=20260713';
 
 let currentSymbol = null;
 let activeTab = 'positions';
 let historyPeriod = '1d';
 let updateTimer = null;
 let countdownTimer = null;
-let lastTpSlCheck = 0;
+let slBootstrapTimer = null;
 
 function coinFeedConfigs(coins) {
   return coins.map(c => ({
@@ -46,6 +47,8 @@ async function init() {
     return;
   }
 
+  await loadBinanceLogos();
+
   currentSymbol = storage.getSelectedCoin() || coins[0].symbol;
   if (!storage.getSelectedCoin() && currentSymbol) {
     storage.setSelectedCoin(currentSymbol);
@@ -62,12 +65,17 @@ async function init() {
   renderAll();
   ui.initMetricSlider();
 
-  updateTimer = setInterval(monitorLoop, 2000);
+  updateTimer = setInterval(monitorLoop, 1000);
   countdownTimer = setInterval(updateCountdown, 1000);
 
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) monitorLoop();
+    if (!document.hidden) runTpSlCheck();
   });
+  window.addEventListener('focus', () => runTpSlCheck());
+  window.addEventListener('pageshow', () => runTpSlCheck());
+  window.addEventListener('online', () => runTpSlCheck());
+
+  bootstrapSlMonitor();
 
   setTimeout(renderAll, 500);
 }
@@ -91,10 +99,12 @@ function handleCloudUpdate(detail = {}) {
   if (detail.fromRemote) {
     ui.showToast('Data updated from another device', 'success');
   }
+
+  runTpSlCheck();
 }
 
 function onPriceUpdate(symbol) {
-  runTpSlCheck(false);
+  runTpSlCheck();
 
   if (symbol === currentSymbol) {
     renderPairAndAccount();
@@ -104,11 +114,7 @@ function onPriceUpdate(symbol) {
   renderTicker();
 }
 
-function runTpSlCheck(force = true) {
-  const now = Date.now();
-  if (!force && now - lastTpSlCheck < 250) return;
-  lastTpSlCheck = now;
-
+function runTpSlCheck() {
   const prices = api.getPriceData();
   const closed = trading.checkTpSl(prices);
   if (closed.length > 0) {
@@ -120,8 +126,29 @@ function runTpSlCheck(force = true) {
   }
 }
 
+function bootstrapSlMonitor() {
+  let attempts = 0;
+  const tryCheck = () => {
+    attempts++;
+    runTpSlCheck();
+    const positions = storage.getPositions();
+    if (!positions.length || attempts >= 30) {
+      slBootstrapTimer = null;
+      return;
+    }
+    const prices = api.getPriceData();
+    const allReady = positions.every(p => prices[p.symbol]?.markPrice > 0);
+    if (allReady) {
+      slBootstrapTimer = null;
+      return;
+    }
+    slBootstrapTimer = setTimeout(tryCheck, 500);
+  };
+  tryCheck();
+}
+
 function monitorLoop() {
-  runTpSlCheck(true);
+  runTpSlCheck();
 }
 
 function updateCountdown() {

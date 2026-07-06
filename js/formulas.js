@@ -110,6 +110,12 @@ export function formatPrice(value, precision = 2) {
   return parts.join('.');
 }
 
+/** Browser tab title — no thousands separator (avoids truncated titles like "7 | ETHUSDT") */
+export function formatTitlePrice(value, precision = 2) {
+  if (value == null || isNaN(value)) return '--';
+  return Number(value).toFixed(precision);
+}
+
 export function formatPnl(value, precision = 2) {
   if (value == null || isNaN(value)) return '--';
   const num = Number(value);

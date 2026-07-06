@@ -1,6 +1,6 @@
-import * as storage from './storage.js';
-import * as formulas from './formulas.js';
-import { getMarkPrice, getTickerData } from './api.js';
+import * as storage from './storage.js?v=20260707';
+import * as formulas from './formulas.js?v=20260707';
+import { getMarkPrice, getTickerData, getPriceExtremes, resetPriceExtremes } from './api.js?v=20260707';
 
 let tradeDebounce = false;
 
@@ -129,14 +129,43 @@ export function closePosition(positionId, closePrice) {
   return historyEntry;
 }
 
+function num(val) {
+  const n = Number(val);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Highest price seen (mark / last / tick extremes) — used for Short SL & Long TP */
+function peakTriggerPrice(tick, extremes) {
+  const candidates = [tick?.markPrice, tick?.lastPrice, extremes?.high]
+    .map(num)
+    .filter(p => p != null && p > 0);
+  return candidates.length ? Math.max(...candidates) : null;
+}
+
+/** Lowest price seen (mark / last / tick extremes) — used for Long SL & Short TP */
+function troughTriggerPrice(tick, extremes) {
+  const candidates = [tick?.markPrice, tick?.lastPrice, extremes?.low]
+    .map(num)
+    .filter(p => p != null && p > 0);
+  return candidates.length ? Math.min(...candidates) : null;
+}
+
 export function checkTpSl(prices) {
   const positions = storage.getPositions();
-  const settings = storage.getSettings();
   const closed = [];
+  const checkedSymbols = [];
 
   for (const pos of positions) {
-    const markPrice = prices[pos.symbol]?.markPrice;
+    const tick = prices[pos.symbol];
+    const markPrice = num(tick?.markPrice);
     if (!markPrice) continue;
+
+    checkedSymbols.push(pos.symbol);
+    const extremes = getPriceExtremes(pos.symbol);
+    const peak = peakTriggerPrice(tick, extremes);
+    const trough = troughTriggerPrice(tick, extremes);
+    const tp = num(pos.tp);
+    const sl = num(pos.sl);
 
     const liqVal = formulas.liqPrice(pos.direction, pos.entryPrice, pos.leverage, storage.getCoinMmr(pos.symbol));
     let liquidated = false;
@@ -150,23 +179,37 @@ export function checkTpSl(prices) {
     }
 
     let shouldClose = false;
+    let closePrice = markPrice;
 
-    if (pos.tp && pos.tp > 0) {
-      if (pos.direction === 'Long' && markPrice >= pos.tp) shouldClose = true;
-      if (pos.direction === 'Short' && markPrice <= pos.tp) shouldClose = true;
+    if (tp && tp > 0) {
+      if (pos.direction === 'Long' && peak != null && peak >= tp) {
+        shouldClose = true;
+        closePrice = peak;
+      }
+      if (pos.direction === 'Short' && trough != null && trough <= tp) {
+        shouldClose = true;
+        closePrice = trough;
+      }
     }
 
-    if (!shouldClose && pos.sl && pos.sl > 0) {
-      if (pos.direction === 'Long' && markPrice <= pos.sl) shouldClose = true;
-      if (pos.direction === 'Short' && markPrice >= pos.sl) shouldClose = true;
+    if (!shouldClose && sl && sl > 0) {
+      if (pos.direction === 'Long' && trough != null && trough <= sl) {
+        shouldClose = true;
+        closePrice = trough;
+      }
+      if (pos.direction === 'Short' && peak != null && peak >= sl) {
+        shouldClose = true;
+        closePrice = peak;
+      }
     }
 
     if (shouldClose) {
-      const result = closePosition(pos.id, markPrice);
+      const result = closePosition(pos.id, closePrice);
       if (result) closed.push(result);
     }
   }
 
+  if (checkedSymbols.length) resetPriceExtremes(checkedSymbols);
   return closed;
 }
 
